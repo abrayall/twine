@@ -324,6 +324,59 @@ class Twine {
             wp_die('Security check failed');
         }
 
+        // Handle theme file upload (do this first, before saving other settings)
+        // Theme upload form doesn't contain other settings, so we handle it separately
+        if (isset($_FILES['twine_theme_upload']) && $_FILES['twine_theme_upload']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['twine_theme_upload'];
+
+            // Validate file type
+            $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if ($file_ext !== 'css') {
+                wp_die('Invalid file type. Only CSS files are allowed.');
+            }
+
+            // Validate file size (max 1MB)
+            if ($file['size'] > 1048576) {
+                wp_die('File is too large. Maximum size is 1MB.');
+            }
+
+            // Read file content
+            $file_content = file_get_contents($file['tmp_name']);
+            if ($file_content === false) {
+                wp_die('Failed to read uploaded file.');
+            }
+
+            // Extract theme name from file content
+            preg_match('/Theme Name:\s*(.+)/', $file_content, $name_matches);
+            if (empty($name_matches[1])) {
+                wp_die('Invalid theme file. Theme must have a "Theme Name" in the header comment.');
+            }
+
+            $theme_name = trim($name_matches[1]);
+            $theme_slug = sanitize_title($theme_name);
+
+            // Ensure custom themes directory exists
+            if (!file_exists(TWINE_CUSTOM_THEMES_DIR)) {
+                wp_mkdir_p(TWINE_CUSTOM_THEMES_DIR);
+            }
+
+            // Save theme file to custom themes directory
+            $theme_path = TWINE_CUSTOM_THEMES_DIR . '/' . $theme_slug . '.css';
+            $save_result = file_put_contents($theme_path, $file_content);
+
+            if ($save_result === false) {
+                wp_die('Failed to save theme file. Please check file permissions.');
+            }
+
+            // Determine redirect page
+            $redirect_page = isset($_POST['redirect_to']) ? sanitize_text_field($_POST['redirect_to']) : 'twine';
+
+            // Redirect with theme uploaded message
+            wp_redirect(admin_url('admin.php?page=' . $redirect_page . '&saved=true&theme_uploaded=' . urlencode($theme_slug)));
+            exit;
+        }
+
+        // Normal settings save (not a theme upload)
         $links = array();
 
         if (isset($_POST['link_text']) && is_array($_POST['link_text'])) {
@@ -377,57 +430,6 @@ class Twine {
 
         if ($result === false) {
             wp_die('Failed to save links. Please check file permissions.');
-        }
-
-        // Handle theme file upload
-        if (isset($_FILES['twine_theme_upload']) && $_FILES['twine_theme_upload']['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES['twine_theme_upload'];
-
-            // Validate file type
-            $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            if ($file_ext !== 'css') {
-                wp_die('Invalid file type. Only CSS files are allowed.');
-            }
-
-            // Validate file size (max 1MB)
-            if ($file['size'] > 1048576) {
-                wp_die('File is too large. Maximum size is 1MB.');
-            }
-
-            // Read file content
-            $file_content = file_get_contents($file['tmp_name']);
-            if ($file_content === false) {
-                wp_die('Failed to read uploaded file.');
-            }
-
-            // Extract theme name from file content
-            preg_match('/Theme Name:\s*(.+)/', $file_content, $name_matches);
-            if (empty($name_matches[1])) {
-                wp_die('Invalid theme file. Theme must have a "Theme Name" in the header comment.');
-            }
-
-            $theme_name = trim($name_matches[1]);
-            $theme_slug = sanitize_title($theme_name);
-
-            // Ensure custom themes directory exists
-            if (!file_exists(TWINE_CUSTOM_THEMES_DIR)) {
-                wp_mkdir_p(TWINE_CUSTOM_THEMES_DIR);
-            }
-
-            // Save theme file to custom themes directory
-            $theme_path = TWINE_CUSTOM_THEMES_DIR . '/' . $theme_slug . '.css';
-            $save_result = file_put_contents($theme_path, $file_content);
-
-            if ($save_result === false) {
-                wp_die('Failed to save theme file. Please check file permissions.');
-            }
-
-            // Determine redirect page
-            $redirect_page = isset($_POST['redirect_to']) ? sanitize_text_field($_POST['redirect_to']) : 'twine';
-
-            // Redirect with theme uploaded message
-            wp_redirect(admin_url('admin.php?page=' . $redirect_page . '&saved=true&theme_uploaded=' . urlencode($theme_slug)));
-            exit;
         }
 
         // Determine redirect page
