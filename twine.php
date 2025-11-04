@@ -178,7 +178,8 @@ class Twine {
                 'github' => '',
                 'website' => ''
             ),
-            'theme' => ''
+            'theme' => '',
+            'slug' => 'twine'
         );
 
         if (!file_exists(TWINE_LINKS_FILE)) {
@@ -247,6 +248,14 @@ class Twine {
     public function get_theme() {
         $data = $this->get_data();
         return isset($data['theme']) ? $data['theme'] : '';
+    }
+
+    /**
+     * Get saved slug
+     */
+    public function get_slug() {
+        $data = $this->get_data();
+        return isset($data['slug']) ? $data['slug'] : 'twine';
     }
 
     /**
@@ -411,6 +420,22 @@ class Twine {
         // Get theme
         $theme = isset($_POST['twine_theme']) ? sanitize_text_field($_POST['twine_theme']) : '';
 
+        // Get and validate slug
+        $old_slug = $this->get_slug();
+        $slug = isset($_POST['twine_slug']) ? sanitize_text_field($_POST['twine_slug']) : 'twine';
+
+        // Validate slug: only lowercase letters, numbers, and hyphens
+        $slug = strtolower($slug);
+        $slug = preg_replace('/[^a-z0-9-]/', '', $slug);
+
+        // Ensure slug is not empty
+        if (empty($slug)) {
+            $slug = 'twine';
+        }
+
+        // Check if slug has changed - if so, we need to flush rewrite rules
+        $slug_changed = ($old_slug !== $slug);
+
         // Prepare data structure
         $data = array(
             'icon' => $icon,
@@ -418,7 +443,8 @@ class Twine {
             'description' => $description,
             'links' => $links,
             'social' => $social,
-            'theme' => $theme
+            'theme' => $theme,
+            'slug' => $slug
         );
 
         // Ensure directory exists
@@ -430,6 +456,11 @@ class Twine {
 
         if ($result === false) {
             wp_die('Failed to save links. Please check file permissions.');
+        }
+
+        // If slug changed, flush rewrite rules
+        if ($slug_changed) {
+            flush_rewrite_rules();
         }
 
         // Determine redirect page
@@ -450,6 +481,8 @@ class Twine {
         $description = $this->get_description();
         $social = $this->get_social();
         $theme = $this->get_theme();
+        $slug = $this->get_slug();
+        $public_url = home_url('/' . $slug);
         $available_themes = $this->get_available_themes();
         ?>
         <div class="wrap">
@@ -458,8 +491,8 @@ class Twine {
             <div class="twine-public-url-notice">
                 <p>
                     <strong>Your Public Page:</strong>
-                    <a href="<?php echo home_url('/twine'); ?>" target="_blank"><?php echo home_url('/twine'); ?></a>
-                    <button type="button" class="button button-small" id="twine-copy-url-btn" data-url="<?php echo esc_attr(home_url('/twine')); ?>">Copy Link</button>
+                    <a href="<?php echo $public_url; ?>" target="_blank"><?php echo $public_url; ?></a>
+                    <button type="button" class="button button-small" id="twine-copy-url-btn" data-url="<?php echo esc_attr($public_url); ?>">Copy Link</button>
                 </p>
             </div>
 
@@ -475,15 +508,6 @@ class Twine {
                 </div>
             <?php endif; ?>
 
-            <div class="notice notice-info">
-                <p>
-                    <strong>Your Twine Links Page:</strong>
-                    <a href="<?php echo home_url('/twine'); ?>" target="_blank"><?php echo home_url('/twine'); ?></a>
-                    <br>
-                    <em>Share this link on your social media profiles, in your bio, or anywhere you want to direct people to all your links in one place.</em>
-                </p>
-            </div>
-
             <div class="twine-admin-container">
                 <div class="twine-admin-content">
                     <h2 class="nav-tab-wrapper">
@@ -491,6 +515,7 @@ class Twine {
                         <a href="#theme" class="nav-tab" data-tab="theme">Theme</a>
                         <a href="#links" class="nav-tab" data-tab="links">Links</a>
                         <a href="#social" class="nav-tab" data-tab="social">Social</a>
+                        <a href="#advanced" class="nav-tab" data-tab="advanced">Advanced</a>
                     </h2>
 
                     <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" id="twine-form" enctype="multipart/form-data">
@@ -722,6 +747,35 @@ class Twine {
                                 </div>
                             </div>
                         </div>
+                        </div>
+
+                        <div class="twine-tab-content" id="tab-advanced" style="display: none;">
+                            <div class="twine-advanced-section">
+                                <h3>Advanced Settings</h3>
+                                <p class="description">Configure advanced options for your Twine page.</p>
+
+                                <table class="form-table">
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="twine-slug">Page Slug</label>
+                                        </th>
+                                        <td>
+                                            <input type="text"
+                                                   name="twine_slug"
+                                                   id="twine-slug"
+                                                   value="<?php echo esc_attr($this->get_slug()); ?>"
+                                                   class="regular-text"
+                                                   pattern="[a-z0-9-]+"
+                                                   placeholder="twine">
+                                            <p class="description">
+                                                The URL path for your Twine page. Only lowercase letters, numbers, and hyphens are allowed.<br>
+                                                <strong>Current URL:</strong> <code id="twine-slug-preview"><?php echo home_url('/' . $this->get_slug()); ?></code><br>
+                                                <em>Warning: Changing this will break any existing links to your Twine page.</em>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
                         </div>
 
                         <p class="submit">
@@ -1392,10 +1446,11 @@ class Twine {
     }
 
     /**
-     * Add rewrite rules for /twine endpoint
+     * Add rewrite rules for dynamic slug endpoint
      */
     public function add_rewrite_rules() {
-        add_rewrite_rule('^twine/?$', 'index.php?twine_page=1', 'top');
+        $slug = $this->get_slug();
+        add_rewrite_rule('^' . $slug . '/?$', 'index.php?twine_page=1', 'top');
         add_rewrite_tag('%twine_page%', '([^&]+)');
 
         // Flush rewrite rules on plugin activation (only once)
