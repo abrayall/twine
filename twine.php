@@ -778,6 +778,7 @@ class Twine {
 
                 <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" id="twine-theme-upload-form" enctype="multipart/form-data" style="display: none;">
                     <input type="hidden" name="action" value="twine_save_links">
+                    <?php wp_nonce_field('twine_save_links', 'twine_nonce'); ?>
                     <input type="file" name="twine_theme_upload" id="twine-theme-upload-main" accept=".css">
                 </form>
 
