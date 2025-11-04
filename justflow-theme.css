@@ -1,0 +1,171 @@
+/**
+ * Theme Name: JustFlow
+ * Theme URI: https://justflownh.com
+ * Description: Professional theme matching JustFlow Events & Marketing branding with black background, teal accents, and modern design
+ * Version: 1.0.0
+ * Author: Brayall, LLC
+ * Author URI: https://github.com/abrayall
+ */
+
+.twine-container {
+    background: #000000;
+    min-height: 100vh;
+    padding: 60px 20px;
+}
+
+.twine-profile {
+    padding-top: 60px;
+    padding-bottom: 40px;
+}
+
+.twine-icon {
+    width: 120px;
+    height: 120px;
+    border: 4px solid #0080b1;
+    box-shadow: 0 8px 24px rgba(0, 128, 177, 0.3);
+    background: #fff;
+}
+
+.twine-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.twine-name {
+    color: #ffffff;
+    font-size: 48px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+}
+
+.twine-description {
+    color: #cccccc;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.twine-link-button {
+    background: #32373c;
+    color: #ffffff;
+    border: 2px solid #32373c;
+    border-radius: 9999px;
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@media (hover: hover) {
+    .twine-link-button:hover {
+        background: #0080b1;
+        border-color: #0080b1;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 128, 177, 0.4);
+    }
+}
+
+.twine-link-button:active {
+    background: #006a95;
+    border-color: #006a95;
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 128, 177, 0.3);
+}
+
+.twine-social {
+    margin-top: 48px;
+    padding-bottom: 60px;
+}
+
+.twine-social-icon {
+    width: 48px;
+    height: 48px;
+    background: #32373c;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+@media (hover: hover) {
+    .twine-social-icon:hover {
+        background: #0080b1;
+        transform: scale(1.1);
+        box-shadow: 0 4px 16px rgba(0, 128, 177, 0.4);
+    }
+}
+
+.twine-social-icon:active {
+    transform: scale(0.95);
+}
+
+.twine-social-icon svg {
+    width: 24px;
+    height: 24px;
+    color: #ffffff;
+}
+
+@media (max-width: 768px) {
+    .twine-container {
+        padding: 40px 20px;
+    }
+
+    .twine-profile {
+        padding-top: 40px;
+        padding-bottom: 32px;
+    }
+
+    .twine-icon {
+        width: 100px;
+        height: 100px;
+        border-width: 3px;
+    }
+
+    .twine-name {
+        font-size: 36px;
+        margin-bottom: 12px;
+    }
+
+    .twine-description {
+        font-size: 16px;
+    }
+
+    .twine-link-button {
+        padding: 12px 28px;
+        font-size: 15px;
+    }
+
+    .twine-social {
+        margin-top: 40px;
+        padding-bottom: 40px;
+    }
+
+    .twine-social-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .twine-social-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+@media (max-width: 375px) {
+    .twine-name {
+        font-size: 32px;
+    }
+
+    .twine-description {
+        font-size: 15px;
+    }
+
+    .twine-link-button {
+        padding: 10px 24px;
+        font-size: 14px;
+    }
+}
