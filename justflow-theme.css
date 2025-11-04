@@ -80,7 +80,7 @@
     color: #ffffff;
     border: 2px solid #0080b1;
     border-radius: 9999px;
-    padding: 14px 32px;
+    padding: 10px 32px;
     font-size: 16px;
     font-weight: 600;
     transition: all 0.3s ease;
@@ -175,7 +175,7 @@
     }
 
     .twine-link-button {
-        padding: 12px 28px;
+        padding: 8px 28px;
         font-size: 15px;
     }
 
