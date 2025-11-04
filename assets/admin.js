@@ -40,6 +40,23 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // Update slug preview in real-time
+    $('#twine-slug').on('input', function() {
+        var slug = $(this).val();
+        // Sanitize slug: lowercase, remove non-alphanumeric except hyphens
+        slug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        if (slug === '') {
+            slug = 'twine';
+        }
+
+        // Get the base URL (extract from the current preview)
+        var currentPreview = $('#twine-slug-preview').text();
+        var baseUrl = currentPreview.substring(0, currentPreview.lastIndexOf('/') + 1);
+
+        // Update the preview
+        $('#twine-slug-preview').text(baseUrl + slug);
+    });
+
     // Reload preview iframe on Settings page when form is saved
     if ($('.twine-admin-preview-iframe').length > 0) {
         // Reload preview when theme is changed
