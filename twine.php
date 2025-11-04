@@ -422,13 +422,19 @@ class Twine {
                 wp_die('Failed to save theme file. Please check file permissions.');
             }
 
+            // Determine redirect page
+            $redirect_page = isset($_POST['redirect_to']) ? sanitize_text_field($_POST['redirect_to']) : 'twine';
+
             // Redirect with theme uploaded message
-            wp_redirect(admin_url('admin.php?page=twine&saved=true&theme_uploaded=' . urlencode($theme_slug)));
+            wp_redirect(admin_url('admin.php?page=' . $redirect_page . '&saved=true&theme_uploaded=' . urlencode($theme_slug)));
             exit;
         }
 
+        // Determine redirect page
+        $redirect_page = isset($_POST['redirect_to']) ? sanitize_text_field($_POST['redirect_to']) : 'twine';
+
         // Redirect back to admin page
-        wp_redirect(admin_url('admin.php?page=twine&saved=true'));
+        wp_redirect(admin_url('admin.php?page=' . $redirect_page . '&saved=true'));
         exit;
     }
 
@@ -778,6 +784,7 @@ class Twine {
 
                 <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" id="twine-theme-upload-form" enctype="multipart/form-data" style="display: none;">
                     <input type="hidden" name="action" value="twine_save_links">
+                    <input type="hidden" name="redirect_to" value="twine-theme-editor">
                     <?php wp_nonce_field('twine_save_links', 'twine_nonce'); ?>
                     <input type="file" name="twine_theme_upload" id="twine-theme-upload-main" accept=".css">
                 </form>
