@@ -1,0 +1,48 @@
+/**
+ * Theme Name: Arctic Frost
+ * Theme URI: https://example.com/themes/arctic-frost
+ * Description: Cool icy blue winter theme
+ * Version: 1.0.0
+ * Author: Twine Themes
+ * Author URI: https://example.com
+ */
+
+.twine-container {
+    background: linear-gradient(135deg, #e6f7ff 0%, #b3e0ff 50%, #80ccff 100%);
+}
+
+.twine-icon {
+    border: 4px solid #0077be;
+    box-shadow: 0 8px 20px rgba(0, 119, 190, 0.3);
+}
+
+.twine-name {
+    color: #004d7a;
+    font-size: 30px;
+}
+
+.twine-description {
+    color: #006699;
+}
+
+.twine-link-button {
+    background: #fff;
+    color: #0077be;
+    border: 2px solid #0077be;
+}
+
+@media (hover: hover) {
+
+.twine-link-button:hover {
+    background: #0077be;
+    color: #fff;
+}
+}
+
+.twine-link-button:active {
+    transform: scale(0.98);
+}
+
+.twine-social-icon {
+    color: #0077be;
+}

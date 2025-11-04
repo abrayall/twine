@@ -1,0 +1,178 @@
+.twine-container {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Profile Section */
+.twine-profile {
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 40px 20px 0;
+}
+
+.twine-icon {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #d0d0d0;
+    background: #f6f6f6;
+}
+
+.twine-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.twine-name {
+    font-size: 52px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    color: #000;
+    line-height: 1.2;
+}
+
+.twine-description {
+    font-size: 20px;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Links */
+.twine-links {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+    padding: 0 20px;
+}
+
+.twine-link-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    background: #fff;
+    color: #000;
+    border: 1px solid #d0d0d0;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.2s ease-in-out;
+    min-height: 48px;
+    word-wrap: break-word;
+}
+
+@media (hover: hover) {
+    .twine-link-button:hover {
+        background: #f6f6f6;
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.twine-link-button:active {
+    background: #f6f6f6;
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Social Media Icons */
+.twine-social {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 32px;
+    padding: 0 20px 40px;
+    flex-wrap: wrap;
+}
+
+.twine-social-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    color: #000;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+@media (hover: hover) {
+    .twine-social-icon:hover {
+        transform: scale(1.1);
+    }
+}
+
+.twine-social-icon:active {
+    transform: scale(0.95);
+}
+
+.twine-social-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Empty state */
+.twine-empty {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 40px 20px;
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+    .twine-profile {
+        margin-bottom: 28px;
+    }
+
+    .twine-icon {
+        width: 88px;
+        height: 88px;
+        margin-bottom: 16px;
+    }
+
+    .twine-name {
+        font-size: 44px;
+        margin-bottom: 10px;
+    }
+
+    .twine-description {
+        font-size: 18px;
+    }
+
+    .twine-links {
+        gap: 12px;
+    }
+
+    .twine-link-button {
+        padding: 12px 20px;
+        font-size: 15px;
+        min-height: 46px;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 375px) {
+    .twine-link-button {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 44px;
+    }
+}

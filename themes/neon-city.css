@@ -1,0 +1,51 @@
+/**
+ * Theme Name: Neon City
+ * Theme URI: https://example.com/themes/neon-city
+ * Description: Cyberpunk-inspired neon lights theme
+ * Version: 1.0.0
+ * Author: Twine Themes
+ * Author URI: https://example.com
+ */
+
+.twine-container {
+    background: #1a1a2e;
+}
+
+.twine-icon {
+    border: 3px solid #00f3ff;
+    box-shadow: 0 0 20px #00f3ff, 0 0 40px #00f3ff;
+}
+
+.twine-name {
+    color: #00f3ff;
+    font-size: 32px;
+    text-shadow: 0 0 10px #00f3ff;
+}
+
+.twine-description {
+    color: #ff00e4;
+}
+
+.twine-link-button {
+    background: transparent;
+    color: #00f3ff;
+    border: 2px solid #00f3ff;
+    box-shadow: 0 0 10px #00f3ff;
+}
+
+@media (hover: hover) {
+
+.twine-link-button:hover {
+    background: #00f3ff;
+    color: #1a1a2e;
+    box-shadow: 0 0 20px #00f3ff, 0 0 40px #00f3ff;
+}
+}
+
+.twine-link-button:active {
+    transform: scale(0.98);
+}
+
+.twine-social-icon {
+    color: #ff00e4;
+}

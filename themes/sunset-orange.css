@@ -1,0 +1,51 @@
+/**
+ * Theme Name: Sunset Orange
+ * Theme URI: https://example.com/themes/sunset-orange
+ * Description: Vibrant orange sunset theme
+ * Version: 1.0.0
+ * Author: Twine Themes
+ * Author URI: https://example.com
+ */
+
+.twine-container {
+    background: linear-gradient(135deg, #ff8c00 0%, #ffa500 50%, #ffb84d 100%);
+}
+
+.twine-icon {
+    border: 5px solid #fff;
+    box-shadow: 0 8px 25px rgba(255, 140, 0, 0.4);
+}
+
+.twine-name {
+    color: #fff;
+    font-size: 32px;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.twine-description {
+    color: #fff5e6;
+}
+
+.twine-link-button {
+    background: rgba(255, 255, 255, 0.95);
+    color: #ff8c00;
+    border: 3px solid #fff;
+    font-weight: 700;
+}
+
+@media (hover: hover) {
+
+.twine-link-button:hover {
+    background: #fff;
+    transform: scale(1.04);
+}
+}
+
+.twine-link-button:active {
+    transform: scale(0.98);
+}
+
+.twine-social-icon {
+    color: #fff;
+}
