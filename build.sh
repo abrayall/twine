@@ -93,8 +93,8 @@ if [ -f "README.md" ]; then
     cp README.md "$PLUGIN_DIR/"
 fi
 
-# Update version in plugin header
-sed -i.bak "s/\* Version: .*/\* Version: ${VERSION}/" "$PLUGIN_DIR/twine.php"
+# Update version in plugin header (only the first occurrence)
+sed -i.bak "1,/\* Version:/ s/\* Version: .*/\* Version: ${VERSION}/" "$PLUGIN_DIR/twine.php"
 rm -f "$PLUGIN_DIR/twine.php.bak"
 
 # Remove development files
