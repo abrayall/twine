@@ -1,5 +1,5 @@
 # Build artifacts
-/build/*.zip
+/build/
 
 # macOS
 .DS_Store
