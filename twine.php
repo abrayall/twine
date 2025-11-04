@@ -16,8 +16,27 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Read version from version.properties file
+ */
+function twine_get_version() {
+    $version_file = plugin_dir_path(__FILE__) . 'version.properties';
+
+    if (!file_exists($version_file)) {
+        return '0.1.0'; // Fallback version
+    }
+
+    $properties = parse_ini_file($version_file);
+
+    if ($properties === false || !isset($properties['major']) || !isset($properties['minor']) || !isset($properties['maintenance'])) {
+        return '0.1.0'; // Fallback version
+    }
+
+    return $properties['major'] . '.' . $properties['minor'] . '.' . $properties['maintenance'];
+}
+
 // Define plugin constants
-define('TWINE_VERSION', '0.1.0');
+define('TWINE_VERSION', twine_get_version());
 define('TWINE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TWINE_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TWINE_DATA_DIR', WP_CONTENT_DIR . '/twine');
