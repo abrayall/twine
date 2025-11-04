@@ -1,0 +1,42 @@
+/**
+ * Theme Name: Minimal White
+ * Theme URI: https://example.com/themes/minimal-white
+ * Description: Clean and minimal white design
+ * Version: 1.0.0
+ * Author: Twine Themes
+ * Author URI: https://example.com
+ */
+
+.twine-container {
+    background: #fafafa;
+}
+
+.twine-name {
+    color: #222;
+    font-weight: 600;
+}
+
+.twine-description {
+    color: #777;
+}
+
+.twine-link-button {
+    background: #fff;
+    color: #222;
+    border: 1px solid #e0e0e0;
+}
+
+@media (hover: hover) {
+
+.twine-link-button:hover {
+    border-color: #222;
+}
+}
+
+.twine-link-button:active {
+    transform: scale(0.98);
+}
+
+.twine-social-icon {
+    color: #222;
+}

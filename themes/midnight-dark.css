@@ -1,0 +1,59 @@
+/**
+ * Theme Name: Midnight Dark
+ * Theme URI: https://example.com/themes/midnight-dark
+ * Description: Sleek dark theme with purple accents
+ * Version: 1.0.0
+ * Author: Twine Themes
+ * Author URI: https://example.com
+ */
+
+.twine-container {
+    background: #0f0f23;
+}
+
+.twine-icon {
+    border: 3px solid #9d4edd;
+    box-shadow: 0 0 30px rgba(157, 78, 221, 0.5);
+}
+
+.twine-name {
+    color: #fff;
+    font-size: 30px;
+}
+
+.twine-description {
+    color: #c8c8c8;
+}
+
+.twine-link-button {
+    background: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 20px rgba(157, 78, 221, 0.3);
+}
+
+@media (hover: hover) {
+
+.twine-link-button:hover {
+    box-shadow: 0 6px 30px rgba(157, 78, 221, 0.6);
+}
+}
+
+.twine-link-button:active {
+    transform: scale(0.98);
+}
+
+.twine-social-icon {
+    color: #9d4edd;
+}
+
+@media (hover: hover) {
+
+.twine-social-icon:hover {
+    color: #c77dff;
+}
+}
+
+.twine-social-icon:active {
+    transform: scale(0.95);
+}
