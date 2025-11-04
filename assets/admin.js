@@ -3,6 +3,43 @@ jQuery(document).ready(function($) {
 
     console.log('Twine admin.js loaded successfully');
 
+    // Copy public URL to clipboard
+    $('#twine-copy-url-btn').on('click', function(e) {
+        e.preventDefault();
+        var url = $(this).data('url');
+        var $btn = $(this);
+        var originalText = $btn.text();
+
+        // Use modern clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                $btn.text('Copied!');
+                setTimeout(function() {
+                    $btn.text(originalText);
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy URL to clipboard');
+            });
+        } else {
+            // Fallback for older browsers
+            var $temp = $('<input>');
+            $('body').append($temp);
+            $temp.val(url).select();
+            try {
+                document.execCommand('copy');
+                $btn.text('Copied!');
+                setTimeout(function() {
+                    $btn.text(originalText);
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy URL to clipboard');
+            }
+            $temp.remove();
+        }
+    });
+
     // Reload preview iframe on Settings page when form is saved
     if ($('.twine-admin-preview-iframe').length > 0) {
         // Reload preview when theme is changed
@@ -87,7 +124,7 @@ jQuery(document).ready(function($) {
             );
 
             // Update button text and remove remove button
-            $('#twine-upload-icon-btn').text('Upload Icon');
+            $('#twine-upload-icon-btn').text('Change Icon');
             $('#twine-remove-icon-btn').remove();
         }
     });

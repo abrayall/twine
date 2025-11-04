@@ -314,6 +314,10 @@ class Twine {
      * Save links and icon to JSON file
      */
     public function save_links() {
+        error_log('=== TWINE save_links() called ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('FILES data: ' . print_r($_FILES, true));
+
         // Check user permissions
         if (!current_user_can('manage_options')) {
             wp_die('Unauthorized user');
@@ -327,6 +331,8 @@ class Twine {
         // Handle theme file upload (do this first, before saving other settings)
         // Theme upload form doesn't contain other settings, so we handle it separately
         if (isset($_FILES['twine_theme_upload']) && $_FILES['twine_theme_upload']['error'] === UPLOAD_ERR_OK) {
+            error_log('THEME UPLOAD detected - processing file upload');
+
             $file = $_FILES['twine_theme_upload'];
 
             // Validate file type
@@ -372,10 +378,12 @@ class Twine {
             $redirect_page = isset($_POST['redirect_to']) ? sanitize_text_field($_POST['redirect_to']) : 'twine';
 
             // Redirect with theme uploaded message
+            error_log('THEME UPLOAD complete - redirecting to: ' . $redirect_page);
             wp_redirect(admin_url('admin.php?page=' . $redirect_page . '&saved=true&theme_uploaded=' . urlencode($theme_slug)));
             exit;
         }
 
+        error_log('NORMAL SETTINGS SAVE - no theme upload detected');
         // Normal settings save (not a theme upload)
         $links = array();
 
@@ -425,6 +433,8 @@ class Twine {
         $this->ensure_data_directory();
 
         // Write to JSON file
+        error_log('WRITING SETTINGS to file: ' . TWINE_LINKS_FILE);
+        error_log('Settings data: ' . print_r($data, true));
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $result = file_put_contents(TWINE_LINKS_FILE, $json);
 
@@ -454,6 +464,14 @@ class Twine {
         ?>
         <div class="wrap">
             <h1>Twine Settings</h1>
+
+            <div class="twine-public-url-notice">
+                <p>
+                    <strong>Your Public Page:</strong>
+                    <a href="<?php echo home_url('/twine'); ?>" target="_blank"><?php echo home_url('/twine'); ?></a>
+                    <button type="button" class="button button-small" id="twine-copy-url-btn" data-url="<?php echo esc_attr(home_url('/twine')); ?>">Copy Link</button>
+                </p>
+            </div>
 
             <?php if (isset($_GET['saved'])): ?>
                 <div class="notice notice-success is-dismissible">
@@ -506,7 +524,7 @@ class Twine {
                                 <input type="hidden" name="twine_icon" id="twine-icon-url" value="<?php echo esc_attr($icon); ?>">
                                 <div class="twine-icon-buttons">
                                     <button type="button" class="button" id="twine-upload-icon-btn">
-                                        <?php echo $icon ? 'Change Icon' : 'Upload Icon'; ?>
+                                        Change Icon
                                     </button>
                                     <?php if ($icon): ?>
                                         <button type="button" class="button" id="twine-remove-icon-btn">Remove Icon</button>
@@ -1359,6 +1377,9 @@ class Twine {
      * AJAX handler for setting active theme
      */
     public function ajax_set_active_theme() {
+        error_log('=== TWINE ajax_set_active_theme() called ===');
+        error_log('POST data: ' . print_r($_POST, true));
+
         // Check nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'twine_save_links')) {
             wp_send_json_error('Security check failed');
@@ -1370,13 +1391,19 @@ class Twine {
         }
 
         $theme_slug = isset($_POST['theme_slug']) ? sanitize_text_field($_POST['theme_slug']) : '';
+        error_log('Setting theme to: ' . $theme_slug);
 
         // Load current settings
         $data = $this->get_data();
+        error_log('Current data loaded: ' . print_r($data, true));
+
         $data['theme'] = $theme_slug;
+        error_log('Data after setting theme: ' . print_r($data, true));
 
         // Save settings
+        error_log('Saving to file: ' . TWINE_LINKS_FILE);
         if (file_put_contents(TWINE_LINKS_FILE, json_encode($data, JSON_PRETTY_PRINT)) !== false) {
+            error_log('Theme activated successfully');
             wp_send_json_success('Theme activated successfully');
         } else {
             wp_send_json_error('Failed to save settings');
