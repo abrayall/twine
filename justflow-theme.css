@@ -1,7 +1,7 @@
 /**
  * Theme Name: JustFlow
  * Theme URI: https://justflownh.com
- * Description: Professional theme matching JustFlow Events & Marketing branding with clean white background, teal accents, and modern design
+ * Description: Professional theme matching JustFlow Events & Marketing branding with watercolor background and diagonal cutoff
  * Version: 1.0.0
  * Author: Brayall, LLC
  * Author URI: https://github.com/abrayall
@@ -10,12 +10,32 @@
 .twine-container {
     background: #ffffff;
     min-height: 100vh;
-    padding: 60px 20px;
+    padding: 0;
+    position: relative;
+}
+
+.twine-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 65vh;
+    background-image: url('https://justflownh.com/wp-content/uploads/2020/03/200210-JF-Background-Water-Color-First-Section-1.jpg');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 80px), 0 100%);
+    z-index: 0;
 }
 
 .twine-profile {
+    position: relative;
+    z-index: 1;
     padding-top: 60px;
     padding-bottom: 40px;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 .twine-icon {
@@ -47,6 +67,13 @@
     line-height: 1.6;
 }
 
+.twine-links {
+    position: relative;
+    z-index: 1;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
 .twine-link-button {
     background: #0080b1;
     color: #ffffff;
@@ -76,8 +103,12 @@
 }
 
 .twine-social {
+    position: relative;
+    z-index: 1;
     margin-top: 48px;
     padding-bottom: 60px;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 .twine-social-icon {
@@ -117,8 +148,9 @@
 }
 
 @media (max-width: 768px) {
-    .twine-container {
-        padding: 40px 20px;
+    .twine-container::before {
+        height: 60vh;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 60px), 0 100%);
     }
 
     .twine-profile {
