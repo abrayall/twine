@@ -1,0 +1,15 @@
+# Build artifacts
+/build/*.zip
+
+# macOS
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# WordPress
+wp-config-local.php
