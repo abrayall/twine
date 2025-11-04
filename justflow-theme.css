@@ -61,10 +61,11 @@
 }
 
 .twine-description {
-    color: #666666;
+    color: #ffffff;
     font-size: 18px;
     font-weight: 400;
     line-height: 1.6;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .twine-links {
