@@ -8,7 +8,7 @@
  */
 
 .twine-container {
-    background: linear-gradient(180deg, #2e1a47 0%, #1a0b2e 50%, #0f0514 100%);
+    background: #2e1a47;
 }
 
 .twine-icon {
@@ -27,7 +27,7 @@
 }
 
 .twine-link-button {
-    background: linear-gradient(90deg, #ff00ff, #00ffff);
+    background: #ff00ff;
     color: #000;
     border: none;
     font-weight: 700;

@@ -8,7 +8,7 @@
  */
 
 .twine-container {
-    background: linear-gradient(to bottom, #ff6b6b, #feca57, #ee5a6f);
+    background: #ff6b6b;
     min-height: 100vh;
 }
 

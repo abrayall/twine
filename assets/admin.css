@@ -29,18 +29,17 @@
 
 .twine-admin-container {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     margin-top: 0;
 }
 
 .twine-admin-content {
-    flex: 1;
 }
 
 .twine-admin-sidebar {
     width: 420px;
     flex-shrink: 0;
-    margin-top: 45px;
+    margin-top: 0;
 }
 
 .twine-preview-container {

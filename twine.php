@@ -43,6 +43,7 @@ define('TWINE_DATA_DIR', WP_CONTENT_DIR . '/twine');
 define('TWINE_LINKS_FILE', TWINE_DATA_DIR . '/settings.json');
 define('TWINE_CUSTOM_THEMES_DIR', WP_CONTENT_DIR . '/uploads/twine/themes');
 define('TWINE_CUSTOM_THEMES_URL', content_url('/uploads/twine/themes'));
+define('TWINE_TEMP_THEMES_DIR', WP_CONTENT_DIR . '/uploads/twine/temp');
 
 /**
  * Main Twine class
@@ -61,6 +62,7 @@ class Twine {
         add_action('admin_post_twine_save_custom_theme', array($this, 'save_custom_theme'));
         add_action('wp_ajax_twine_delete_theme', array($this, 'ajax_delete_theme'));
         add_action('wp_ajax_twine_set_active_theme', array($this, 'ajax_set_active_theme'));
+        add_action('wp_ajax_twine_save_temp_theme', array($this, 'ajax_save_temp_theme'));
         add_action('init', array($this, 'add_rewrite_rules'));
         add_action('template_redirect', array($this, 'handle_twine_page'));
         add_action('template_redirect', array($this, 'handle_theme_preview'));
@@ -141,7 +143,7 @@ class Twine {
      * Enqueue frontend scripts and styles
      */
     public function enqueue_frontend_scripts() {
-        wp_enqueue_style('twine-frontend', TWINE_PLUGIN_URL . 'assets/frontend.css', array(), TWINE_VERSION);
+        wp_enqueue_style('twine-frontend', TWINE_PLUGIN_URL . 'assets/twine.css', array(), TWINE_VERSION);
 
         // Load theme CSS if selected
         $theme = $this->get_theme();
@@ -870,6 +872,8 @@ class Twine {
                             <a href="<?php echo add_query_arg(array('twine_preview' => ''), home_url('/')); ?>"
                                target="_blank"
                                class="button">Preview</a>
+                            <a href="<?php echo admin_url('admin.php?page=twine-theme-editor&action=new'); ?>"
+                               class="button">Customize</a>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -904,8 +908,13 @@ class Twine {
                                 <a href="<?php echo add_query_arg(array('twine_preview' => $slug), home_url('/')); ?>"
                                    target="_blank"
                                    class="button">Preview</a>
-                                <a href="<?php echo admin_url('admin.php?page=twine-theme-editor&theme=' . $slug); ?>"
-                                   class="button">Customize</a>
+                                <?php if ($theme_data['custom']): ?>
+                                    <a href="<?php echo admin_url('admin.php?page=twine-theme-editor&action=edit&theme=' . urlencode($slug)); ?>"
+                                       class="button">Edit</a>
+                                <?php else: ?>
+                                    <a href="<?php echo admin_url('admin.php?page=twine-theme-editor&action=new&base-theme=' . urlencode($slug)); ?>"
+                                       class="button">Customize</a>
+                                <?php endif; ?>
                                 <?php if ($theme_data['custom']): ?>
                                     <button type="button"
                                             class="button twine-delete-theme-btn"
@@ -935,6 +944,8 @@ class Twine {
                                 <a href="<?php echo add_query_arg(array('twine_preview' => ''), home_url('/')); ?>"
                                    target="_blank"
                                    class="button">Preview</a>
+                                <a href="<?php echo admin_url('admin.php?page=twine-theme-editor&action=new'); ?>"
+                                   class="button">Customize</a>
                             </div>
                         </div>
                         <?php
@@ -959,17 +970,33 @@ class Twine {
             'description_color' => '#666666',
             'social_icon_color' => '#000000',
             'icon_border_color' => '#0073aa',
-            'button_radius' => '12'
+            'button_radius' => '12',
+            'name_font_size' => '52',
+            'name_font_weight' => '700',
+            'description_font_size' => '20',
+            'button_font_size' => '16',
+            'button_font_weight' => '500'
         );
 
-        // Load existing theme values if editing
-        if ($is_editing) {
-            $theme_data = $available_themes[$editing_theme];
-            $defaults['theme_name'] = $theme_data['name'];
+        // Check if customizing from an existing theme
+        $base_theme = isset($_GET['base-theme']) ? sanitize_text_field($_GET['base-theme']) : '';
+        $theme_to_load = $is_editing ? $editing_theme : $base_theme;
+
+        // Load theme values if editing or customizing from existing
+        if (!empty($theme_to_load) && isset($available_themes[$theme_to_load])) {
+            $theme_data = $available_themes[$theme_to_load];
+
+            // Set theme name: if customizing from a built-in theme, add "Customized" suffix
+            // If editing or customizing from a custom theme, keep the original name
+            if (!empty($base_theme) && !$theme_data['custom']) {
+                $defaults['theme_name'] = $theme_data['name'] . ' Customized';
+            } else {
+                $defaults['theme_name'] = $theme_data['name'];
+            }
 
             $theme_path = $theme_data['custom']
-                ? TWINE_CUSTOM_THEMES_DIR . '/' . $editing_theme . '.css'
-                : TWINE_PLUGIN_DIR . 'themes/' . $editing_theme . '.css';
+                ? TWINE_CUSTOM_THEMES_DIR . '/' . $theme_to_load . '.css'
+                : TWINE_PLUGIN_DIR . 'themes/' . $theme_to_load . '.css';
 
             if (file_exists($theme_path)) {
                 $css_content = file_get_contents($theme_path);
@@ -1010,26 +1037,35 @@ class Twine {
                 if (preg_match('/\.twine-link-button\s*\{[^}]*border-radius:\s*(\d+)px/s', $css_content, $matches)) {
                     $defaults['button_radius'] = $matches[1];
                 }
+
+                // Parse font properties
+                if (preg_match('/\.twine-name\s*\{[^}]*font-size:\s*(\d+)px/s', $css_content, $matches)) {
+                    $defaults['name_font_size'] = $matches[1];
+                }
+                if (preg_match('/\.twine-name\s*\{[^}]*font-weight:\s*(\d+)/s', $css_content, $matches)) {
+                    $defaults['name_font_weight'] = $matches[1];
+                }
+                if (preg_match('/\.twine-description\s*\{[^}]*font-size:\s*(\d+)px/s', $css_content, $matches)) {
+                    $defaults['description_font_size'] = $matches[1];
+                }
+                if (preg_match('/\.twine-link-button\s*\{[^}]*font-size:\s*(\d+)px/s', $css_content, $matches)) {
+                    $defaults['button_font_size'] = $matches[1];
+                }
+                if (preg_match('/\.twine-link-button\s*\{[^}]*font-weight:\s*(\d+)/s', $css_content, $matches)) {
+                    $defaults['button_font_weight'] = $matches[1];
+                }
             }
         }
         ?>
         <div class="wrap">
             <h1>
                 <a href="<?php echo admin_url('admin.php?page=twine-theme-editor'); ?>" class="page-title-action" style="text-decoration: none;">← Back to Themes</a>
-                <?php echo $is_editing ? 'Edit Theme: ' . esc_html($defaults['theme_name']) : 'Create New Theme'; ?>
+                Theme Editor
             </h1>
-            <p><?php echo $is_editing ? 'Modify the colors and styles for this theme.' : 'Create a custom theme by adjusting colors and styles below.'; ?></p>
 
-            <?php if ($is_editing && $available_themes[$editing_theme]['custom']): ?>
-                <p style="margin-bottom: 20px;">
-                    <a href="<?php echo admin_url('admin.php?twine_download_theme=' . $editing_theme); ?>"
-                       class="button">
-                        <span class="dashicons dashicons-download" style="margin-top: 4px;"></span> Download CSS
-                    </a>
-                </p>
-            <?php endif; ?>
-
-            <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" id="twine-theme-editor-form">
+            <div class="twine-admin-container">
+                <div class="twine-admin-content">
+                    <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" id="twine-theme-editor-form">
                 <input type="hidden" name="action" value="twine_save_custom_theme">
                 <?php wp_nonce_field('twine_save_custom_theme', 'twine_theme_editor_nonce'); ?>
 
@@ -1047,21 +1083,7 @@ class Twine {
                         </td>
                     </tr>
 
-                    <tr>
-                        <th scope="row"><label for="base-theme">Start From Theme</label></th>
-                        <td>
-                            <select name="base_theme" id="base-theme" class="regular-text">
-                                <option value="">Start from scratch</option>
-                                <?php foreach ($available_themes as $slug => $theme_data): ?>
-                                    <option value="<?php echo esc_attr($slug); ?>">
-                                        <?php echo esc_html($theme_data['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="description">Optional: Load values from an existing theme</p>
-                        </td>
-                    </tr>
-
+                    <!-- Background -->
                     <tr>
                         <th scope="row"><label for="background-color">Background Color</label></th>
                         <td>
@@ -1074,6 +1096,75 @@ class Twine {
                         </td>
                     </tr>
 
+                    <!-- Name -->
+                    <tr>
+                        <th scope="row"><label for="name-color">Name Color</label></th>
+                        <td>
+                            <input type="text"
+                                   name="name_color"
+                                   id="name-color"
+                                   class="color-picker"
+                                   value="<?php echo esc_attr($defaults['name_color']); ?>">
+                            <p class="description">Profile name text color</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row"><label for="name-font-size">Name Font Size</label></th>
+                        <td>
+                            <input type="number"
+                                   name="name_font_size"
+                                   id="name-font-size"
+                                   class="small-text"
+                                   value="<?php echo esc_attr($defaults['name_font_size']); ?>"
+                                   min="12"
+                                   max="100"> px
+                            <p class="description">Font size for profile name</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row"><label for="name-font-weight">Name Font Weight</label></th>
+                        <td>
+                            <select name="name_font_weight" id="name-font-weight">
+                                <option value="400" <?php selected($defaults['name_font_weight'], '400'); ?>>Normal (400)</option>
+                                <option value="500" <?php selected($defaults['name_font_weight'], '500'); ?>>Medium (500)</option>
+                                <option value="600" <?php selected($defaults['name_font_weight'], '600'); ?>>Semi-Bold (600)</option>
+                                <option value="700" <?php selected($defaults['name_font_weight'], '700'); ?>>Bold (700)</option>
+                                <option value="800" <?php selected($defaults['name_font_weight'], '800'); ?>>Extra Bold (800)</option>
+                            </select>
+                            <p class="description">Font weight for profile name</p>
+                        </td>
+                    </tr>
+
+                    <!-- Description -->
+                    <tr>
+                        <th scope="row"><label for="description-color">Description Color</label></th>
+                        <td>
+                            <input type="text"
+                                   name="description_color"
+                                   id="description-color"
+                                   class="color-picker"
+                                   value="<?php echo esc_attr($defaults['description_color']); ?>">
+                            <p class="description">Profile description text color</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row"><label for="description-font-size">Description Font Size</label></th>
+                        <td>
+                            <input type="number"
+                                   name="description_font_size"
+                                   id="description-font-size"
+                                   class="small-text"
+                                   value="<?php echo esc_attr($defaults['description_font_size']); ?>"
+                                   min="12"
+                                   max="32"> px
+                            <p class="description">Font size for profile description</p>
+                        </td>
+                    </tr>
+
+                    <!-- Buttons -->
                     <tr>
                         <th scope="row"><label for="button-bg">Button Background</label></th>
                         <td>
@@ -1111,54 +1202,6 @@ class Twine {
                     </tr>
 
                     <tr>
-                        <th scope="row"><label for="name-color">Name Color</label></th>
-                        <td>
-                            <input type="text"
-                                   name="name_color"
-                                   id="name-color"
-                                   class="color-picker"
-                                   value="<?php echo esc_attr($defaults['name_color']); ?>">
-                            <p class="description">Profile name text color</p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="description-color">Description Color</label></th>
-                        <td>
-                            <input type="text"
-                                   name="description_color"
-                                   id="description-color"
-                                   class="color-picker"
-                                   value="<?php echo esc_attr($defaults['description_color']); ?>">
-                            <p class="description">Profile description text color</p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="social-icon-color">Social Icon Color</label></th>
-                        <td>
-                            <input type="text"
-                                   name="social_icon_color"
-                                   id="social-icon-color"
-                                   class="color-picker"
-                                   value="<?php echo esc_attr($defaults['social_icon_color']); ?>">
-                            <p class="description">Social media icon color</p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="icon-border-color">Icon Border Color</label></th>
-                        <td>
-                            <input type="text"
-                                   name="icon_border_color"
-                                   id="icon-border-color"
-                                   class="color-picker"
-                                   value="<?php echo esc_attr($defaults['icon_border_color']); ?>">
-                            <p class="description">Profile icon border color</p>
-                        </td>
-                    </tr>
-
-                    <tr>
                         <th scope="row"><label for="button-radius">Button Border Radius</label></th>
                         <td>
                             <input type="number"
@@ -1171,12 +1214,87 @@ class Twine {
                             <p class="description">Roundness of button corners (0 = square, higher = more rounded)</p>
                         </td>
                     </tr>
+
+                    <tr>
+                        <th scope="row"><label for="button-font-size">Button Font Size</label></th>
+                        <td>
+                            <input type="number"
+                                   name="button_font_size"
+                                   id="button-font-size"
+                                   class="small-text"
+                                   value="<?php echo esc_attr($defaults['button_font_size']); ?>"
+                                   min="12"
+                                   max="24"> px
+                            <p class="description">Font size for link buttons</p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th scope="row"><label for="button-font-weight">Button Font Weight</label></th>
+                        <td>
+                            <select name="button_font_weight" id="button-font-weight">
+                                <option value="400" <?php selected($defaults['button_font_weight'], '400'); ?>>Normal (400)</option>
+                                <option value="500" <?php selected($defaults['button_font_weight'], '500'); ?>>Medium (500)</option>
+                                <option value="600" <?php selected($defaults['button_font_weight'], '600'); ?>>Semi-Bold (600)</option>
+                                <option value="700" <?php selected($defaults['button_font_weight'], '700'); ?>>Bold (700)</option>
+                            </select>
+                            <p class="description">Font weight for link buttons</p>
+                        </td>
+                    </tr>
+
+                    <!-- Icon -->
+                    <tr>
+                        <th scope="row"><label for="icon-border-color">Icon Border Color</label></th>
+                        <td>
+                            <input type="text"
+                                   name="icon_border_color"
+                                   id="icon-border-color"
+                                   class="color-picker"
+                                   value="<?php echo esc_attr($defaults['icon_border_color']); ?>">
+                            <p class="description">Profile icon border color</p>
+                        </td>
+                    </tr>
+
+                    <!-- Social -->
+                    <tr>
+                        <th scope="row"><label for="social-icon-color">Social Icon Color</label></th>
+                        <td>
+                            <input type="text"
+                                   name="social_icon_color"
+                                   id="social-icon-color"
+                                   class="color-picker"
+                                   value="<?php echo esc_attr($defaults['social_icon_color']); ?>">
+                            <p class="description">Social media icon color</p>
+                        </td>
+                    </tr>
                 </table>
 
-                <p class="submit">
-                    <input type="submit" name="submit" id="submit" class="button button-primary" value="<?php echo $is_editing ? 'Update Theme' : 'Create Theme'; ?>">
-                </p>
-            </form>
+                        <p class="submit">
+                            <input type="submit" name="submit" id="submit" class="button button-primary" value="Save">
+                        </p>
+                    </form>
+                </div>
+
+                <div class="twine-admin-sidebar">
+                    <div class="twine-preview-container">
+                        <?php
+                        // Show preview of theme being edited or customized from
+                        $preview_theme = $is_editing ? $editing_theme : (!empty($base_theme) ? $base_theme : '');
+                        ?>
+                        <iframe src="<?php echo add_query_arg(array('twine_preview' => $preview_theme), home_url('/' . $this->get_slug())); ?>"
+                                scrolling="yes"
+                                class="twine-admin-preview-iframe"></iframe>
+                    </div>
+                    <?php if ($is_editing && $available_themes[$editing_theme]['custom']): ?>
+                        <p style="text-align: center; margin-top: 15px;">
+                            <a href="<?php echo admin_url('admin.php?twine_download_theme=' . $editing_theme); ?>"
+                               class="button">
+                                <span class="dashicons dashicons-download" style="margin-top: 4px;"></span> Download Theme
+                            </a>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
         <?php
     }
@@ -1213,6 +1331,13 @@ class Twine {
         $icon_border_color = isset($_POST['icon_border_color']) ? sanitize_hex_color($_POST['icon_border_color']) : '#0073aa';
         $button_radius = isset($_POST['button_radius']) ? absint($_POST['button_radius']) : 12;
 
+        // Get font/size values
+        $name_font_size = isset($_POST['name_font_size']) ? absint($_POST['name_font_size']) : 52;
+        $name_font_weight = isset($_POST['name_font_weight']) ? sanitize_text_field($_POST['name_font_weight']) : '700';
+        $description_font_size = isset($_POST['description_font_size']) ? absint($_POST['description_font_size']) : 20;
+        $button_font_size = isset($_POST['button_font_size']) ? absint($_POST['button_font_size']) : 16;
+        $button_font_weight = isset($_POST['button_font_weight']) ? sanitize_text_field($_POST['button_font_weight']) : '500';
+
         // Generate CSS
         $css = "/**\n";
         $css .= " * Theme Name: " . $theme_name . "\n";
@@ -1223,7 +1348,6 @@ class Twine {
 
         $css .= ".twine-container {\n";
         $css .= "    background: " . $background_color . ";\n";
-        $css .= "    padding: 40px 20px;\n";
         $css .= "}\n\n";
 
         $css .= ".twine-icon {\n";
@@ -1232,16 +1356,21 @@ class Twine {
 
         $css .= ".twine-name {\n";
         $css .= "    color: " . $name_color . ";\n";
+        $css .= "    font-size: " . $name_font_size . "px;\n";
+        $css .= "    font-weight: " . $name_font_weight . ";\n";
         $css .= "}\n\n";
 
         $css .= ".twine-description {\n";
         $css .= "    color: " . $description_color . ";\n";
+        $css .= "    font-size: " . $description_font_size . "px;\n";
         $css .= "}\n\n";
 
         $css .= ".twine-link-button {\n";
         $css .= "    background: " . $button_bg . ";\n";
         $css .= "    color: " . $button_text . ";\n";
         $css .= "    border-radius: " . $button_radius . "px;\n";
+        $css .= "    font-size: " . $button_font_size . "px;\n";
+        $css .= "    font-weight: " . $button_font_weight . ";\n";
         $css .= "}\n\n";
 
         $css .= ".twine-link-button:hover {\n";
@@ -1252,7 +1381,29 @@ class Twine {
         $css .= "    color: " . $social_icon_color . ";\n";
         $css .= "}\n";
 
-        // Ensure custom themes directory exists
+        // Check if this is a temporary preview save (key parameter present)
+        $key = isset($_POST['key']) ? sanitize_text_field($_POST['key']) : '';
+
+        if (!empty($key)) {
+            // Save to temporary file for preview
+            if (!file_exists(TWINE_TEMP_THEMES_DIR)) {
+                wp_mkdir_p(TWINE_TEMP_THEMES_DIR);
+            }
+
+            $temp_theme_path = TWINE_TEMP_THEMES_DIR . '/theme-' . $key . '.css';
+            $result = file_put_contents($temp_theme_path, $css);
+
+            if ($result === false) {
+                wp_send_json_error('Failed to save temporary theme file');
+            }
+
+            wp_send_json_success(array(
+                'message' => 'Temporary theme saved',
+                'key' => $key
+            ));
+        }
+
+        // Regular save - ensure custom themes directory exists
         if (!file_exists(TWINE_CUSTOM_THEMES_DIR)) {
             wp_mkdir_p(TWINE_CUSTOM_THEMES_DIR);
         }
@@ -1263,6 +1414,14 @@ class Twine {
 
         if ($result === false) {
             wp_die('Failed to save theme file. Please check file permissions.');
+        }
+
+        // Clean up all temporary theme files
+        if (file_exists(TWINE_TEMP_THEMES_DIR)) {
+            $temp_files = glob(TWINE_TEMP_THEMES_DIR . '/theme-*.css');
+            foreach ($temp_files as $temp_file) {
+                @unlink($temp_file);
+            }
         }
 
         // Redirect back to themes gallery
@@ -1513,10 +1672,19 @@ class Twine {
             <meta charset="<?php bloginfo('charset'); ?>">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Theme Preview</title>
-            <link rel="stylesheet" href="<?php echo TWINE_PLUGIN_URL . 'assets/frontend.css?v=' . TWINE_VERSION; ?>">
+            <link rel="stylesheet" href="<?php echo TWINE_PLUGIN_URL . 'assets/twine.css?v=' . TWINE_VERSION; ?>">
             <?php
-            // Load theme CSS
-            if (!empty($theme_slug)) {
+            // Check for temporary theme preview
+            $temp_key = isset($_GET['key']) ? sanitize_text_field($_GET['key']) : '';
+            if (!empty($temp_key)) {
+                // Load temporary theme file
+                $temp_theme_file = TWINE_TEMP_THEMES_DIR . '/theme-' . $temp_key . '.css';
+                if (file_exists($temp_theme_file)) {
+                    // Inline the CSS to avoid browser caching issues
+                    echo '<style>' . file_get_contents($temp_theme_file) . '</style>';
+                }
+            } elseif (!empty($theme_slug)) {
+                // Load regular theme CSS
                 $custom_theme_file = TWINE_CUSTOM_THEMES_DIR . '/' . $theme_slug . '.css';
                 $plugin_theme_file = TWINE_PLUGIN_DIR . 'themes/' . $theme_slug . '.css';
 
