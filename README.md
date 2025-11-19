@@ -192,32 +192,13 @@ This makes it easy to backup, migrate, or directly edit your data if needed.
 
 ## Building the Plugin
 
-### Prerequisites
-- Git installed
-- For Unix/Mac: bash, zip
-- For Windows: PowerShell
+Build using [wordsmith](https://github.com/abrayall/wordsmith):
 
-### Build Process
-
-The build system automatically:
-1. Reads version from git tags
-2. Generates `version.properties`
-3. Updates plugin header version
-4. Creates production-ready ZIP file
-
-#### On Unix/Mac/Linux:
 ```bash
-./build.sh
+wordsmith build
 ```
 
-#### On Windows:
-```cmd
-build.bat
-```
-
-Build artifacts are created in `build/`:
-- `twine-{version}.zip` - Production plugin ZIP
-- `version.properties` - Version metadata
+This creates `build/twine-{version}.zip` ready for upload to WordPress.
 
 ### Versioning
 
@@ -233,10 +214,6 @@ Twine uses semantic versioning based on git tags:
    - Exact tag: `v0.2.0` → version `0.2.0`
    - Commits after tag: `v0.2.0-5-g1a2b3c4` → version `0.2.0-5`
    - Uncommitted changes: Appends timestamp
-
-3. **Plugin reads version at runtime:**
-   - The plugin parses `version.properties`
-   - Falls back to `0.1.0` if file missing
 
 ## Development
 

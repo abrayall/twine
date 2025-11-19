@@ -260,6 +260,17 @@ class Twine {
         return isset($data['slug']) ? $data['slug'] : 'twine';
     }
 
+    public function get_public_url() {
+        $slug = $this->get_slug();
+        $permalink_structure = get_option('permalink_structure');
+
+        if (empty($permalink_structure)) {
+            return home_url('?twine_page=1');
+        }
+
+        return home_url('/' . $slug);
+    }
+
     /**
      * Get available themes from both plugin and custom themes directories
      */
@@ -484,7 +495,7 @@ class Twine {
         $social = $this->get_social();
         $theme = $this->get_theme();
         $slug = $this->get_slug();
-        $public_url = home_url('/' . $slug);
+        $public_url = $this->get_public_url();
         $available_themes = $this->get_available_themes();
         ?>
         <div class="wrap">
@@ -1623,7 +1634,12 @@ class Twine {
      * Handle /twine page requests
      */
     public function handle_twine_page() {
-        if (get_query_var('twine_page') !== '1') {
+        $twine_page = get_query_var('twine_page');
+        if (empty($twine_page) && isset($_GET['twine_page'])) {
+            $twine_page = $_GET['twine_page'];
+        }
+
+        if ($twine_page !== '1') {
             return;
         }
 

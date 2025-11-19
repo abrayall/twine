@@ -53,6 +53,36 @@ docker exec -it watchtower_agent_site bash
 
 ## Build System
 
+This plugin uses [wordsmith](https://github.com/abrayall/wordsmith) for building.
+
+### Building
+
+```bash
+wordsmith build
+```
+
+This creates `build/twine-{version}.zip` ready for upload to WordPress.
+
+### Deploying to Local WordPress
+
+Start a local WordPress environment:
+
+```bash
+wordsmith wordpress start
+```
+
+Build and deploy to the running WordPress:
+
+```bash
+wordsmith deploy
+```
+
+Watch for changes and auto-deploy:
+
+```bash
+wordsmith watch deploy
+```
+
 ### Version Management
 
 Versions are managed using **git tags** in the format `v{major}.{minor}.{maintenance}`.
@@ -61,18 +91,6 @@ Versions are managed using **git tags** in the format `v{major}.{minor}.{mainten
 - `0.1.0` - Clean release at tag `v0.1.0`
 - `0.1.0-5` - 5 commits after tag
 - `0.1.0-5-11041430` - 5 commits after tag + local changes (timestamp: Nov 4, 14:30)
-
-### Build Scripts
-
-**Unix/Linux/Mac:**
-```bash
-./build.sh
-```
-
-**Windows:**
-```cmd
-build.bat
-```
 
 ### How Versioning Works
 
@@ -85,7 +103,6 @@ build.bat
 
 **Output:**
 - `build/twine-{version}.zip` - WordPress-ready plugin package
-- `build/version.properties` - Version metadata file
 
 ### Current Version
 - **Latest Tag**: `v0.1.0`
@@ -123,8 +140,7 @@ define('TWINE_VERSION', twine_get_version());
 twine/
 ├── twine.php                           # Main plugin file
 ├── version.properties                   # Version info (auto-generated on build, committed for dev)
-├── build.sh                            # Unix build script
-├── build.bat                           # Windows build script
+├── plugin.properties                   # Build configuration for wordsmith
 ├── README.md                           # User documentation
 ├── CLAUDE.md                           # Developer documentation (this file)
 ├── .gitignore                          # Git ignore rules
@@ -291,14 +307,15 @@ open http://localhost:8082/wp-admin/admin.php?page=twine-theme-editor
 ### Development Cycle
 
 1. Make code changes in `/Users/abrayall/Workspace/twine/`
-2. Test locally by deploying to Docker:
+2. Deploy to local WordPress using wordsmith:
    ```bash
-   docker cp /Users/abrayall/Workspace/twine/twine.php watchtower_agent_site:/var/www/html/wp-content/plugins/twine/twine.php
-   docker cp /Users/abrayall/Workspace/twine/assets watchtower_agent_site:/var/www/html/wp-content/plugins/twine/
+   wordsmith deploy
    ```
 3. Test in browser: http://localhost:8082/twine
 4. Commit changes (following commit message rules above)
 5. Push to GitHub
+
+**IMPORTANT**: Always use `wordsmith deploy` to test changes locally. This builds and deploys the plugin to the running WordPress container automatically.
 
 ### Release Workflow
 
@@ -310,7 +327,7 @@ open http://localhost:8082/wp-admin/admin.php?page=twine-theme-editor
    ```
 3. Build release package:
    ```bash
-   ./build.sh
+   wordsmith build
    ```
 4. Upload `build/twine-0.2.0.zip` to production WordPress sites
 5. Activate via WordPress admin: **Plugins → Add New → Upload Plugin**
@@ -331,8 +348,7 @@ open http://localhost:8082/wp-admin/admin.php?page=twine-theme-editor
 - `themes/*.css` - 25+ theme files with metadata headers
 
 ### Build System
-- `build.sh` - Unix build script (git version parsing)
-- `build.bat` - Windows build script (PowerShell-based)
+- `plugin.properties` - Build configuration for wordsmith
 - `.gitignore` - Excludes build artifacts, IDE files
 
 ## Key Constants
@@ -374,6 +390,12 @@ define('TWINE_CUSTOM_THEMES_URL', content_url('/uploads/twine/themes')); // Cust
 ```
 
 ## Recent Changes
+
+### Version 0.1.1 (2025-11-18)
+
+- Add support for plain permalinks (generates `?twine_page=1` URL format)
+- Update development workflow to use wordsmith deploy
+- Remove legacy build scripts (build.sh, build.bat)
 
 ### Version 0.1.0 (2025-11-04)
 
