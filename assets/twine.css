@@ -134,6 +134,42 @@
     object-fit: contain;
 }
 
+/* Social icons with labels (for duplicates) - separate row */
+.twine-social-labeled {
+    margin-top: -24px;
+    padding-top: 0;
+}
+
+.twine-social-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.twine-social-icon-static {
+    cursor: default;
+}
+
+.twine-social-text-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: #000;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+}
+
+@media (hover: hover) {
+    .twine-social-text-link:hover {
+        background: rgba(0, 0, 0, 0.08);
+    }
+}
+
+.twine-social-text-link:active {
+    background: rgba(0, 0, 0, 0.12);
+}
+
 /* Empty state */
 .twine-empty {
     text-align: center;

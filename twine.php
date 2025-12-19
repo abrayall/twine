@@ -1705,23 +1705,82 @@ class Twine {
             </div>
 
             <?php if (!empty($social)): ?>
+                <?php
+                // Detect duplicate icons to show labels (custom icons use URL as key)
+                $icon_counts = array();
+                foreach ($social as $item) {
+                    if (!empty($item['url'])) {
+                        $icon_key = ($item['icon'] === 'custom' && !empty($item['custom_icon'])) ? 'custom:' . $item['custom_icon'] : $item['icon'];
+                        $icon_counts[$icon_key] = isset($icon_counts[$icon_key]) ? $icon_counts[$icon_key] + 1 : 1;
+                    }
+                }
+                $duplicate_icons = array_filter($icon_counts, function($count) { return $count > 1; });
+
+                // Separate into regular and labeled icons
+                $regular_icons = array();
+                $labeled_icons = array();
+                foreach ($social as $item) {
+                    if (!empty($item['url'])) {
+                        $icon_key = ($item['icon'] === 'custom' && !empty($item['custom_icon'])) ? 'custom:' . $item['custom_icon'] : $item['icon'];
+                        if (isset($duplicate_icons[$icon_key])) {
+                            $labeled_icons[] = $item;
+                        } else {
+                            $regular_icons[] = $item;
+                        }
+                    }
+                }
+                ?>
+                <?php if (!empty($regular_icons)): ?>
                 <div class="twine-social">
-                    <?php foreach ($social as $item): ?>
-                        <?php if (!empty($item['url'])): ?>
-                            <a href="<?php echo esc_url($item['url']); ?>"
-                               class="twine-social-icon"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               aria-label="<?php echo esc_attr($item['name']); ?>">
-                                <?php if ($item['icon'] === 'custom' && !empty($item['custom_icon'])): ?>
-                                    <img src="<?php echo esc_url($item['custom_icon']); ?>" alt="<?php echo esc_attr($item['name']); ?>" class="twine-custom-icon">
-                                <?php else: ?>
-                                    <?php echo $this->get_social_icon($item['icon']); ?>
-                                <?php endif; ?>
-                            </a>
-                        <?php endif; ?>
+                    <?php foreach ($regular_icons as $item): ?>
+                        <a href="<?php echo esc_url($item['url']); ?>"
+                           class="twine-social-icon"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           aria-label="<?php echo esc_attr($item['name']); ?>">
+                            <?php if ($item['icon'] === 'custom' && !empty($item['custom_icon'])): ?>
+                                <img src="<?php echo esc_url($item['custom_icon']); ?>" alt="<?php echo esc_attr($item['name']); ?>" class="twine-custom-icon">
+                            <?php else: ?>
+                                <?php echo $this->get_social_icon($item['icon']); ?>
+                            <?php endif; ?>
+                        </a>
                     <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
+                <?php if (!empty($labeled_icons)): ?>
+                <?php
+                // Group labeled icons by their icon type
+                $grouped_icons = array();
+                foreach ($labeled_icons as $item) {
+                    $icon_key = ($item['icon'] === 'custom' && !empty($item['custom_icon'])) ? 'custom:' . $item['custom_icon'] : $item['icon'];
+                    if (!isset($grouped_icons[$icon_key])) {
+                        $grouped_icons[$icon_key] = array('icon' => $item['icon'], 'custom_icon' => isset($item['custom_icon']) ? $item['custom_icon'] : '', 'items' => array());
+                    }
+                    $grouped_icons[$icon_key]['items'][] = $item;
+                }
+                ?>
+                <div class="twine-social twine-social-labeled">
+                    <?php foreach ($grouped_icons as $group): ?>
+                        <div class="twine-social-group">
+                            <span class="twine-social-icon twine-social-icon-static">
+                                <?php if ($group['icon'] === 'custom' && !empty($group['custom_icon'])): ?>
+                                    <img src="<?php echo esc_url($group['custom_icon']); ?>" alt="" class="twine-custom-icon">
+                                <?php else: ?>
+                                    <?php echo $this->get_social_icon($group['icon']); ?>
+                                <?php endif; ?>
+                            </span>
+                            <?php foreach ($group['items'] as $item): ?>
+                                <a href="<?php echo esc_url($item['url']); ?>"
+                                   class="twine-social-text-link"
+                                   target="_blank"
+                                   rel="noopener noreferrer">
+                                    <?php echo esc_html($item['name']); ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
         <?php
@@ -1945,19 +2004,75 @@ class Twine {
                     <?php endif; ?>
                 </div>
                 <?php if ($mode === 'live' && !empty($social)): ?>
+                    <?php
+                    // Detect duplicate icons to show labels (custom icons use URL as key)
+                    $icon_counts = array();
+                    foreach ($social as $item) {
+                        if (!empty($item['url'])) {
+                            $icon_key = ($item['icon'] === 'custom' && !empty($item['custom_icon'])) ? 'custom:' . $item['custom_icon'] : $item['icon'];
+                            $icon_counts[$icon_key] = isset($icon_counts[$icon_key]) ? $icon_counts[$icon_key] + 1 : 1;
+                        }
+                    }
+                    $duplicate_icons = array_filter($icon_counts, function($count) { return $count > 1; });
+
+                    // Separate into regular and labeled icons
+                    $regular_icons = array();
+                    $labeled_icons = array();
+                    foreach ($social as $item) {
+                        if (!empty($item['url'])) {
+                            $icon_key = ($item['icon'] === 'custom' && !empty($item['custom_icon'])) ? 'custom:' . $item['custom_icon'] : $item['icon'];
+                            if (isset($duplicate_icons[$icon_key])) {
+                                $labeled_icons[] = $item;
+                            } else {
+                                $regular_icons[] = $item;
+                            }
+                        }
+                    }
+                    ?>
+                    <?php if (!empty($regular_icons)): ?>
                     <div class="twine-social">
-                        <?php foreach ($social as $item): ?>
-                            <?php if (!empty($item['url'])): ?>
-                                <a href="<?php echo esc_url($item['url']); ?>" target="_blank" class="twine-social-icon" aria-label="<?php echo esc_attr($item['name']); ?>">
-                                    <?php if ($item['icon'] === 'custom' && !empty($item['custom_icon'])): ?>
-                                        <img src="<?php echo esc_url($item['custom_icon']); ?>" alt="<?php echo esc_attr($item['name']); ?>" class="twine-custom-icon">
-                                    <?php else: ?>
-                                        <?php echo $this->get_social_icon($item['icon']); ?>
-                                    <?php endif; ?>
-                                </a>
-                            <?php endif; ?>
+                        <?php foreach ($regular_icons as $item): ?>
+                            <a href="<?php echo esc_url($item['url']); ?>" target="_blank" class="twine-social-icon" aria-label="<?php echo esc_attr($item['name']); ?>">
+                                <?php if ($item['icon'] === 'custom' && !empty($item['custom_icon'])): ?>
+                                    <img src="<?php echo esc_url($item['custom_icon']); ?>" alt="<?php echo esc_attr($item['name']); ?>" class="twine-custom-icon">
+                                <?php else: ?>
+                                    <?php echo $this->get_social_icon($item['icon']); ?>
+                                <?php endif; ?>
+                            </a>
                         <?php endforeach; ?>
                     </div>
+                    <?php endif; ?>
+                    <?php if (!empty($labeled_icons)): ?>
+                    <?php
+                    // Group labeled icons by their icon type
+                    $grouped_icons = array();
+                    foreach ($labeled_icons as $item) {
+                        $icon_key = ($item['icon'] === 'custom' && !empty($item['custom_icon'])) ? 'custom:' . $item['custom_icon'] : $item['icon'];
+                        if (!isset($grouped_icons[$icon_key])) {
+                            $grouped_icons[$icon_key] = array('icon' => $item['icon'], 'custom_icon' => isset($item['custom_icon']) ? $item['custom_icon'] : '', 'items' => array());
+                        }
+                        $grouped_icons[$icon_key]['items'][] = $item;
+                    }
+                    ?>
+                    <div class="twine-social twine-social-labeled">
+                        <?php foreach ($grouped_icons as $group): ?>
+                            <div class="twine-social-group">
+                                <span class="twine-social-icon twine-social-icon-static">
+                                    <?php if ($group['icon'] === 'custom' && !empty($group['custom_icon'])): ?>
+                                        <img src="<?php echo esc_url($group['custom_icon']); ?>" alt="" class="twine-custom-icon">
+                                    <?php else: ?>
+                                        <?php echo $this->get_social_icon($group['icon']); ?>
+                                    <?php endif; ?>
+                                </span>
+                                <?php foreach ($group['items'] as $item): ?>
+                                    <a href="<?php echo esc_url($item['url']); ?>" target="_blank" class="twine-social-text-link">
+                                        <?php echo esc_html($item['name']); ?>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
                 <?php elseif ($mode === 'sample'): ?>
                     <div class="twine-social">
                         <a href="#" class="twine-social-icon" onclick="return false;"><?php echo $this->get_social_icon('facebook'); ?></a>

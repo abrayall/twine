@@ -122,3 +122,23 @@
 .twine-social-icon:active {
 	transform: translateY(0) scale(0.98);
 }
+
+/* ---------- Social groups (locations) ---------- */
+.twine-social-group {
+	background: rgba(255, 255, 255, 0.9);
+	padding: 10px 16px;
+	border-radius: 12px;
+	border: 1px solid rgba(234, 33, 46, 0.2);
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.twine-social-text-link {
+	color: #ea212e;
+	font-weight: 600;
+}
+
+@media (hover: hover) {
+	.twine-social-text-link:hover {
+		background: rgba(234, 33, 46, 0.1);
+	}
+}
