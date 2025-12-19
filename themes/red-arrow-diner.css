@@ -1,0 +1,124 @@
+/**
+ * Theme Name: Red Arrow Diner2
+ * Theme URI: https://redarrowdiner.com
+ * Description: Classic American diner style with vintage charm
+ * Version: 1.0.0
+ * Author: Twine Themes
+ * Author URI: https://example.com
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
+
+/* ---------- Page background ---------- */
+.twine-container {
+	background-color: #f4f4f4;
+	background-image: url('https://redarrowdiner.com/wp-content/uploads/2025/12/red-arrwo-backround.jpg');
+	background-position: center top;
+	background-repeat: repeat;
+	background-size: auto;
+
+	padding: 28px 0 24px;
+}
+
+/* ---------- Logo ---------- */
+.twine-icon {
+	border: 3px solid #ea212e;
+	border-radius: 8px;
+	box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+/* ---------- Title ---------- */
+.twine-name {
+	font-family: 'Lobster', cursive;
+	color: #ea212e;
+	font-size: 40px;
+	font-weight: 400;
+	letter-spacing: 0.5px;
+	line-height: 1.05;
+	margin: 14px 0 10px;
+	text-align: center;
+}
+
+@media (max-width: 420px) {
+	.twine-name {
+		font-size: 34px;
+	}
+}
+
+/* ---------- Description ---------- */
+.twine-description {
+	max-width: 560px;
+	margin: 0 auto 18px;
+	padding: 12px 14px;
+
+	color: #111111;
+	font-size: 15px;
+	font-weight: 500;
+	line-height: 1.45;
+	text-align: center;
+
+	text-shadow: none;
+	background: rgba(255, 255, 255, 0.82);
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	border-radius: 14px;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* ---------- Buttons ---------- */
+.twine-link-button {
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	max-width: 560px;
+	margin-left: auto;
+	margin-right: auto;
+
+	background: #ea212e;
+	color: #ffffff;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+
+	padding-left: 16px;
+	padding-right: 16px;
+	font-size: 20px !important;
+	box-shadow: 0 14px 26px rgba(234, 33, 46, 0.22);
+	transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+@media (max-width: 360px) {
+	.twine-link-button {
+		padding: 12px 14px;
+		border-radius: 14px;
+		font-size: 20px;
+		letter-spacing: 0.6px;
+	}
+}
+
+.twine-container {
+	overflow-x: hidden;
+}
+
+/* ---------- Social icons ---------- */
+.twine-social-icon {
+	color: #ea212e;
+	opacity: 0.9;
+	transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.twine-social-icon svg {
+	width: 28px;
+	height: 28px;
+}
+
+@media (hover: hover) {
+	.twine-social-icon:hover {
+		opacity: 1;
+		transform: translateY(-1px);
+		color: #b9151f;
+	}
+}
+
+.twine-social-icon:active {
+	transform: translateY(0) scale(0.98);
+}

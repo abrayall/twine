@@ -201,15 +201,203 @@ jQuery(document).ready(function($) {
         }
     });
 
-    // Show empty state if no links
-    function checkEmptyState() {
-        if ($('#twine-links-container .twine-link-item').length === 0) {
-            $('#twine-links-container').html('<p class="twine-empty-state">No links yet. Click "Add Link" to get started!</p>');
-        }
+    // Social presets with default names and URL placeholders
+    var socialPresets = {
+        // Social Networks
+        facebook: { name: 'Facebook', url: 'https://facebook.com/username' },
+        google: { name: 'Google', url: 'https://google.com' },
+        instagram: { name: 'Instagram', url: 'https://instagram.com/username' },
+        x: { name: 'X', url: 'https://x.com/username' },
+        twitter: { name: 'Twitter', url: 'https://twitter.com/username' },
+        tiktok: { name: 'TikTok', url: 'https://tiktok.com/@username' },
+        youtube: { name: 'YouTube', url: 'https://youtube.com/@username' },
+        linkedin: { name: 'LinkedIn', url: 'https://linkedin.com/in/username' },
+        snapchat: { name: 'Snapchat', url: 'https://snapchat.com/add/username' },
+        pinterest: { name: 'Pinterest', url: 'https://pinterest.com/username' },
+        reddit: { name: 'Reddit', url: 'https://reddit.com/u/username' },
+        threads: { name: 'Threads', url: 'https://threads.net/@username' },
+        bluesky: { name: 'Bluesky', url: 'https://bsky.app/profile/username' },
+        mastodon: { name: 'Mastodon', url: 'https://mastodon.social/@username' },
+        // Messaging
+        discord: { name: 'Discord', url: 'https://discord.gg/invite' },
+        telegram: { name: 'Telegram', url: 'https://t.me/username' },
+        whatsapp: { name: 'WhatsApp', url: 'https://wa.me/phonenumber' },
+        // Streaming & Music
+        twitch: { name: 'Twitch', url: 'https://twitch.tv/username' },
+        spotify: { name: 'Spotify', url: 'https://open.spotify.com/artist/id' },
+        'apple-music': { name: 'Apple Music', url: 'https://music.apple.com/artist/id' },
+        soundcloud: { name: 'SoundCloud', url: 'https://soundcloud.com/username' },
+        vimeo: { name: 'Vimeo', url: 'https://vimeo.com/username' },
+        // Creative & Design
+        dribbble: { name: 'Dribbble', url: 'https://dribbble.com/username' },
+        behance: { name: 'Behance', url: 'https://behance.net/username' },
+        // Developer
+        github: { name: 'GitHub', url: 'https://github.com/username' },
+        stackoverflow: { name: 'Stack Overflow', url: 'https://stackoverflow.com/users/id/username' },
+        // Writing & Content
+        medium: { name: 'Medium', url: 'https://medium.com/@username' },
+        substack: { name: 'Substack', url: 'https://username.substack.com' },
+        // Support & Donations
+        patreon: { name: 'Patreon', url: 'https://patreon.com/username' },
+        'ko-fi': { name: 'Ko-fi', url: 'https://ko-fi.com/username' },
+        buymeacoffee: { name: 'Buy Me a Coffee', url: 'https://buymeacoffee.com/username' },
+        // Contact & Other
+        email: { name: 'Email', url: 'mailto:email@example.com' },
+        phone: { name: 'Phone', url: 'tel:+1234567890' },
+        website: { name: 'Website', url: 'https://' },
+        link: { name: 'Link', url: 'https://' }
+    };
+
+    // Make social items sortable
+    $('#twine-social-container').sortable({
+        handle: '.twine-drag-handle',
+        placeholder: 'twine-social-placeholder',
+        cursor: 'move',
+        opacity: 0.8,
+        tolerance: 'pointer'
+    });
+
+    // Generate social item HTML
+    function getSocialItemHtml(icon, name, url) {
+        function sel(val) { return icon === val ? ' selected' : ''; }
+        return `
+            <div class="twine-social-item">
+                <span class="twine-drag-handle dashicons dashicons-menu"></span>
+                <div class="twine-social-fields">
+                    <div class="twine-social-field twine-social-icon-field">
+                        <label>Icon</label>
+                        <select name="social_icon[]" class="twine-social-icon-select">
+                            <optgroup label="Social Networks">
+                                <option value="facebook"${sel('facebook')}>Facebook</option>
+                                <option value="google"${sel('google')}>Google</option>
+                                <option value="instagram"${sel('instagram')}>Instagram</option>
+                                <option value="x"${sel('x')}>X</option>
+                                <option value="twitter"${sel('twitter')}>Twitter</option>
+                                <option value="tiktok"${sel('tiktok')}>TikTok</option>
+                                <option value="youtube"${sel('youtube')}>YouTube</option>
+                                <option value="linkedin"${sel('linkedin')}>LinkedIn</option>
+                                <option value="snapchat"${sel('snapchat')}>Snapchat</option>
+                                <option value="pinterest"${sel('pinterest')}>Pinterest</option>
+                                <option value="reddit"${sel('reddit')}>Reddit</option>
+                                <option value="threads"${sel('threads')}>Threads</option>
+                                <option value="bluesky"${sel('bluesky')}>Bluesky</option>
+                                <option value="mastodon"${sel('mastodon')}>Mastodon</option>
+                            </optgroup>
+                            <optgroup label="Messaging">
+                                <option value="discord"${sel('discord')}>Discord</option>
+                                <option value="telegram"${sel('telegram')}>Telegram</option>
+                                <option value="whatsapp"${sel('whatsapp')}>WhatsApp</option>
+                            </optgroup>
+                            <optgroup label="Streaming & Music">
+                                <option value="twitch"${sel('twitch')}>Twitch</option>
+                                <option value="spotify"${sel('spotify')}>Spotify</option>
+                                <option value="apple-music"${sel('apple-music')}>Apple Music</option>
+                                <option value="soundcloud"${sel('soundcloud')}>SoundCloud</option>
+                                <option value="vimeo"${sel('vimeo')}>Vimeo</option>
+                            </optgroup>
+                            <optgroup label="Creative & Design">
+                                <option value="dribbble"${sel('dribbble')}>Dribbble</option>
+                                <option value="behance"${sel('behance')}>Behance</option>
+                            </optgroup>
+                            <optgroup label="Developer">
+                                <option value="github"${sel('github')}>GitHub</option>
+                                <option value="stackoverflow"${sel('stackoverflow')}>Stack Overflow</option>
+                            </optgroup>
+                            <optgroup label="Writing & Content">
+                                <option value="medium"${sel('medium')}>Medium</option>
+                                <option value="substack"${sel('substack')}>Substack</option>
+                            </optgroup>
+                            <optgroup label="Support & Donations">
+                                <option value="patreon"${sel('patreon')}>Patreon</option>
+                                <option value="ko-fi"${sel('ko-fi')}>Ko-fi</option>
+                                <option value="buymeacoffee"${sel('buymeacoffee')}>Buy Me a Coffee</option>
+                            </optgroup>
+                            <optgroup label="Contact & Other">
+                                <option value="email"${sel('email')}>Email</option>
+                                <option value="phone"${sel('phone')}>Phone</option>
+                                <option value="website"${sel('website')}>Website</option>
+                                <option value="link"${sel('link')}>Link</option>
+                                <option value="custom"${sel('custom')}>Custom Icon...</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="twine-social-field twine-social-custom-icon-field" style="${icon === 'custom' ? '' : 'display: none;'}">
+                        <label>Icon URL</label>
+                        <input type="url"
+                               name="social_custom_icon[]"
+                               value=""
+                               placeholder="https://example.com/icon.png"
+                               class="twine-social-custom-icon">
+                    </div>
+                    <div class="twine-social-field twine-social-name-field">
+                        <label>Name</label>
+                        <input type="text"
+                               name="social_name[]"
+                               value="${name}"
+                               placeholder="Social Network Name"
+                               class="twine-social-name">
+                    </div>
+                    <div class="twine-social-field twine-social-url-field">
+                        <label>URL</label>
+                        <input type="url"
+                               name="social_url[]"
+                               value="${url}"
+                               placeholder="https://example.com/username"
+                               class="twine-social-url"
+                               required>
+                    </div>
+                </div>
+                <button type="button" class="button twine-remove-social">
+                    <span class="dashicons dashicons-trash"></span>
+                </button>
+            </div>
+        `;
     }
 
-    // Check on load
-    checkEmptyState();
+    // Add new social item from dropdown
+    $('#twine-add-social').on('change', function() {
+        var preset = $(this).val();
+        if (!preset) return;
+
+        var icon = preset === 'custom' ? 'website' : preset;
+        var name = preset === 'custom' ? '' : (socialPresets[preset] ? socialPresets[preset].name : '');
+        var url = preset === 'custom' ? '' : (socialPresets[preset] ? socialPresets[preset].url : '');
+
+        var socialHtml = getSocialItemHtml(icon, name, url);
+        $('#twine-social-container').append(socialHtml);
+
+        // Focus on the appropriate input
+        if (preset === 'custom') {
+            $('#twine-social-container .twine-social-item:last-child .twine-social-name').focus();
+        } else {
+            $('#twine-social-container .twine-social-item:last-child .twine-social-url').focus();
+        }
+
+        // Reset dropdown to placeholder
+        $(this).val('');
+    });
+
+    // Remove social item
+    $(document).on('click', '.twine-remove-social', function() {
+        if (confirm('Are you sure you want to remove this social link?')) {
+            $(this).closest('.twine-social-item').fadeOut(300, function() {
+                $(this).remove();
+            });
+        }
+    });
+
+    // Show/hide custom icon URL field when icon dropdown changes
+    $(document).on('change', '.twine-social-icon-select', function() {
+        var $item = $(this).closest('.twine-social-item');
+        var $customField = $item.find('.twine-social-custom-icon-field');
+        if ($(this).val() === 'custom') {
+            $customField.show();
+            $customField.find('input').focus();
+        } else {
+            $customField.hide();
+            $customField.find('input').val('');
+        }
+    });
 
     // Tab switching function
     function switchTab(tabName) {
@@ -220,6 +408,9 @@ jQuery(document).ready(function($) {
         // Show/hide tab content
         $('.twine-tab-content').hide();
         $('#tab-' + tabName).show();
+
+        // Update hidden field for form submission
+        $('#twine-active-tab').val(tabName);
     }
 
     // Tab switching on click

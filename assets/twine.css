@@ -128,6 +128,12 @@
     height: 24px;
 }
 
+.twine-social-icon img.twine-custom-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
 /* Empty state */
 .twine-empty {
     text-align: center;

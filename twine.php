@@ -82,6 +82,30 @@ class Twine {
     }
 
     /**
+     * Get MonsterInsights GA4 measurement ID if available
+     */
+    private function get_monsterinsights_ga_id() {
+        if (function_exists('monsterinsights_get_ua')) {
+            $ga_id = monsterinsights_get_ua();
+            if (!empty($ga_id)) {
+                return $ga_id;
+            }
+        }
+
+        if (class_exists('MonsterInsights') && function_exists('monsterinsights')) {
+            $mi = monsterinsights();
+            if (method_exists($mi, 'get_tracking_id')) {
+                $ga_id = $mi->get_tracking_id();
+                if (!empty($ga_id)) {
+                    return $ga_id;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Add admin menu
      */
     public function add_admin_menu() {
@@ -169,19 +193,11 @@ class Twine {
             'name' => '',
             'description' => '',
             'links' => array(),
-            'social' => array(
-                'facebook' => '',
-                'instagram' => '',
-                'x' => '',
-                'tiktok' => '',
-                'youtube' => '',
-                'linkedin' => '',
-                'snapchat' => '',
-                'github' => '',
-                'website' => ''
-            ),
+            'social' => array(),
             'theme' => '',
-            'slug' => 'twine'
+            'slug' => 'twine',
+            'page_title' => '',
+            'ga_id' => ''
         );
 
         if (!file_exists(TWINE_LINKS_FILE)) {
@@ -241,7 +257,24 @@ class Twine {
      */
     public function get_social() {
         $data = $this->get_data();
-        return isset($data['social']) ? $data['social'] : array();
+        $social = isset($data['social']) ? $data['social'] : array();
+
+        // Check if old format (associative array with platform keys like 'facebook' => 'url')
+        if (!empty($social) && !isset($social[0])) {
+            $converted = array();
+            foreach ($social as $platform => $url) {
+                if (!empty($url)) {
+                    $converted[] = array(
+                        'name' => ucfirst($platform),
+                        'icon' => $platform,
+                        'url' => $url
+                    );
+                }
+            }
+            return $converted;
+        }
+
+        return $social;
     }
 
     /**
@@ -269,6 +302,22 @@ class Twine {
         }
 
         return home_url('/' . $slug);
+    }
+
+    /**
+     * Get saved page title
+     */
+    public function get_page_title() {
+        $data = $this->get_data();
+        return isset($data['page_title']) ? $data['page_title'] : '';
+    }
+
+    /**
+     * Get saved GA ID
+     */
+    public function get_ga_id() {
+        $data = $this->get_data();
+        return isset($data['ga_id']) ? $data['ga_id'] : '';
     }
 
     /**
@@ -418,17 +467,29 @@ class Twine {
         $description = isset($_POST['twine_description']) ? sanitize_textarea_field($_POST['twine_description']) : '';
 
         // Get social media links
-        $social = array(
-            'facebook' => isset($_POST['twine_social_facebook']) ? esc_url_raw($_POST['twine_social_facebook']) : '',
-            'instagram' => isset($_POST['twine_social_instagram']) ? esc_url_raw($_POST['twine_social_instagram']) : '',
-            'x' => isset($_POST['twine_social_x']) ? esc_url_raw($_POST['twine_social_x']) : '',
-            'tiktok' => isset($_POST['twine_social_tiktok']) ? esc_url_raw($_POST['twine_social_tiktok']) : '',
-            'youtube' => isset($_POST['twine_social_youtube']) ? esc_url_raw($_POST['twine_social_youtube']) : '',
-            'linkedin' => isset($_POST['twine_social_linkedin']) ? esc_url_raw($_POST['twine_social_linkedin']) : '',
-            'snapchat' => isset($_POST['twine_social_snapchat']) ? esc_url_raw($_POST['twine_social_snapchat']) : '',
-            'github' => isset($_POST['twine_social_github']) ? esc_url_raw($_POST['twine_social_github']) : '',
-            'website' => isset($_POST['twine_social_website']) ? esc_url_raw($_POST['twine_social_website']) : ''
-        );
+        $social = array();
+        if (isset($_POST['social_name']) && is_array($_POST['social_name'])) {
+            $names = $_POST['social_name'];
+            $icons = isset($_POST['social_icon']) ? $_POST['social_icon'] : array();
+            $urls = isset($_POST['social_url']) ? $_POST['social_url'] : array();
+            $custom_icons = isset($_POST['social_custom_icon']) ? $_POST['social_custom_icon'] : array();
+            $count = count($names);
+            for ($i = 0; $i < $count; $i++) {
+                $url = isset($urls[$i]) ? esc_url_raw($urls[$i]) : '';
+                if (!empty($url)) {
+                    $item = array(
+                        'name' => sanitize_text_field($names[$i]),
+                        'icon' => isset($icons[$i]) ? sanitize_text_field($icons[$i]) : '',
+                        'url' => $url
+                    );
+                    // Add custom icon URL if icon is set to 'custom'
+                    if ($item['icon'] === 'custom' && !empty($custom_icons[$i])) {
+                        $item['custom_icon'] = esc_url_raw($custom_icons[$i]);
+                    }
+                    $social[] = $item;
+                }
+            }
+        }
 
         // Get theme
         $theme = isset($_POST['twine_theme']) ? sanitize_text_field($_POST['twine_theme']) : '';
@@ -449,6 +510,10 @@ class Twine {
         // Check if slug has changed - if so, we need to flush rewrite rules
         $slug_changed = ($old_slug !== $slug);
 
+        // Get page title and GA ID
+        $page_title = isset($_POST['twine_page_title']) ? sanitize_text_field($_POST['twine_page_title']) : '';
+        $ga_id = isset($_POST['twine_ga_id']) ? sanitize_text_field($_POST['twine_ga_id']) : '';
+
         // Prepare data structure
         $data = array(
             'icon' => $icon,
@@ -457,7 +522,9 @@ class Twine {
             'links' => $links,
             'social' => $social,
             'theme' => $theme,
-            'slug' => $slug
+            'slug' => $slug,
+            'page_title' => $page_title,
+            'ga_id' => $ga_id
         );
 
         // Ensure directory exists
@@ -471,16 +538,22 @@ class Twine {
             wp_die('Failed to save links. Please check file permissions.');
         }
 
-        // If slug changed, flush rewrite rules
+        // If slug changed, add new rewrite rule and flush
         if ($slug_changed) {
+            add_rewrite_rule('^' . $slug . '/?$', 'index.php?twine_page=1', 'top');
             flush_rewrite_rules();
         }
 
-        // Determine redirect page
+        // Determine redirect page and tab
         $redirect_page = isset($_POST['redirect_to']) ? sanitize_text_field($_POST['redirect_to']) : 'twine';
+        $active_tab = isset($_POST['twine_active_tab']) ? sanitize_text_field($_POST['twine_active_tab']) : '';
 
-        // Redirect back to admin page
-        wp_redirect(admin_url('admin.php?page=' . $redirect_page . '&saved=true'));
+        // Redirect back to admin page with tab hash
+        $redirect_url = admin_url('admin.php?page=' . $redirect_page . '&saved=true');
+        if (!empty($active_tab)) {
+            $redirect_url .= '#' . $active_tab;
+        }
+        wp_redirect($redirect_url);
         exit;
     }
 
@@ -533,6 +606,7 @@ class Twine {
 
                     <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" id="twine-form" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="twine_save_links">
+                        <input type="hidden" name="twine_active_tab" id="twine-active-tab" value="general">
                         <?php wp_nonce_field('twine_save_links', 'twine_nonce'); ?>
 
                         <div class="twine-tab-content" id="tab-general">
@@ -606,7 +680,10 @@ class Twine {
                         </div>
 
                         <div class="twine-tab-content" id="tab-links" style="display: none;">
-                        <div class="twine-links-container" id="twine-links-container">
+                        <div class="twine-links-section">
+                            <p class="description">Add links to display on your page. Drag to reorder.</p>
+
+                            <div class="twine-links-container" id="twine-links-container">
                             <?php if (!empty($links)): ?>
                                 <?php foreach ($links as $index => $link): ?>
                                     <div class="twine-link-item">
@@ -637,128 +714,174 @@ class Twine {
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
-                        </div>
+                            </div>
 
-                        <p>
-                            <button type="button" class="button" id="twine-add-link">
-                                <span class="dashicons dashicons-plus-alt"></span> Add Link
-                            </button>
-                        </p>
+                            <p>
+                                <button type="button" class="button" id="twine-add-link">
+                                    <span class="dashicons dashicons-plus-alt"></span> Add Link
+                                </button>
+                            </p>
+                        </div>
                         </div>
 
                         <div class="twine-tab-content" id="tab-social" style="display: none;">
                         <div class="twine-social-section">
-                            <p class="description">Add links to your social media profiles. Only filled links will be displayed.</p>
+                            <p class="description">Add links to your social media profiles. Drag to reorder.</p>
 
-                            <div class="twine-social-grid">
-                                <div class="twine-social-field">
-                                    <label for="twine-social-facebook">
-                                        <span class="dashicons dashicons-facebook-alt"></span> Facebook
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_facebook"
-                                           id="twine-social-facebook"
-                                           value="<?php echo esc_attr($social['facebook']); ?>"
-                                           placeholder="https://facebook.com/yourpage"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-instagram">
-                                        <span class="dashicons dashicons-instagram"></span> Instagram
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_instagram"
-                                           id="twine-social-instagram"
-                                           value="<?php echo esc_attr($social['instagram']); ?>"
-                                           placeholder="https://instagram.com/yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-x">
-                                        <span class="dashicons dashicons-twitter"></span> X (Twitter)
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_x"
-                                           id="twine-social-x"
-                                           value="<?php echo esc_attr($social['x']); ?>"
-                                           placeholder="https://x.com/yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-tiktok">
-                                        <span class="dashicons dashicons-video-alt3"></span> TikTok
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_tiktok"
-                                           id="twine-social-tiktok"
-                                           value="<?php echo esc_attr($social['tiktok']); ?>"
-                                           placeholder="https://tiktok.com/@yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-youtube">
-                                        <span class="dashicons dashicons-video-alt2"></span> YouTube
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_youtube"
-                                           id="twine-social-youtube"
-                                           value="<?php echo esc_attr($social['youtube']); ?>"
-                                           placeholder="https://youtube.com/@yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-linkedin">
-                                        <span class="dashicons dashicons-linkedin"></span> LinkedIn
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_linkedin"
-                                           id="twine-social-linkedin"
-                                           value="<?php echo esc_attr($social['linkedin']); ?>"
-                                           placeholder="https://linkedin.com/in/yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-snapchat">
-                                        <span class="dashicons dashicons-camera"></span> Snapchat
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_snapchat"
-                                           id="twine-social-snapchat"
-                                           value="<?php echo esc_attr($social['snapchat']); ?>"
-                                           placeholder="https://snapchat.com/add/yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-github">
-                                        <span class="dashicons dashicons-editor-code"></span> GitHub
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_github"
-                                           id="twine-social-github"
-                                           value="<?php echo esc_attr($social['github']); ?>"
-                                           placeholder="https://github.com/yourusername"
-                                           class="regular-text">
-                                </div>
-
-                                <div class="twine-social-field">
-                                    <label for="twine-social-website">
-                                        <span class="dashicons dashicons-admin-site"></span> Website
-                                    </label>
-                                    <input type="url"
-                                           name="twine_social_website"
-                                           id="twine-social-website"
-                                           value="<?php echo esc_attr($social['website']); ?>"
-                                           placeholder="https://yourwebsite.com"
-                                           class="regular-text">
-                                </div>
+                            <div class="twine-social-container" id="twine-social-container">
+                                <?php if (!empty($social)): ?>
+                                    <?php foreach ($social as $index => $item): ?>
+                                        <div class="twine-social-item">
+                                            <span class="twine-drag-handle dashicons dashicons-menu"></span>
+                                            <div class="twine-social-fields">
+                                                <div class="twine-social-field twine-social-icon-field">
+                                                    <label>Icon</label>
+                                                    <select name="social_icon[]" class="twine-social-icon-select">
+                                                        <optgroup label="Social Networks">
+                                                            <option value="facebook" <?php selected($item['icon'], 'facebook'); ?>>Facebook</option>
+                                                            <option value="google" <?php selected($item['icon'], 'google'); ?>>Google</option>
+                                                            <option value="instagram" <?php selected($item['icon'], 'instagram'); ?>>Instagram</option>
+                                                            <option value="x" <?php selected($item['icon'], 'x'); ?>>X</option>
+                                                            <option value="twitter" <?php selected($item['icon'], 'twitter'); ?>>Twitter</option>
+                                                            <option value="tiktok" <?php selected($item['icon'], 'tiktok'); ?>>TikTok</option>
+                                                            <option value="youtube" <?php selected($item['icon'], 'youtube'); ?>>YouTube</option>
+                                                            <option value="linkedin" <?php selected($item['icon'], 'linkedin'); ?>>LinkedIn</option>
+                                                            <option value="snapchat" <?php selected($item['icon'], 'snapchat'); ?>>Snapchat</option>
+                                                            <option value="pinterest" <?php selected($item['icon'], 'pinterest'); ?>>Pinterest</option>
+                                                            <option value="reddit" <?php selected($item['icon'], 'reddit'); ?>>Reddit</option>
+                                                            <option value="threads" <?php selected($item['icon'], 'threads'); ?>>Threads</option>
+                                                            <option value="bluesky" <?php selected($item['icon'], 'bluesky'); ?>>Bluesky</option>
+                                                            <option value="mastodon" <?php selected($item['icon'], 'mastodon'); ?>>Mastodon</option>
+                                                        </optgroup>
+                                                        <optgroup label="Messaging">
+                                                            <option value="discord" <?php selected($item['icon'], 'discord'); ?>>Discord</option>
+                                                            <option value="telegram" <?php selected($item['icon'], 'telegram'); ?>>Telegram</option>
+                                                            <option value="whatsapp" <?php selected($item['icon'], 'whatsapp'); ?>>WhatsApp</option>
+                                                        </optgroup>
+                                                        <optgroup label="Streaming & Music">
+                                                            <option value="twitch" <?php selected($item['icon'], 'twitch'); ?>>Twitch</option>
+                                                            <option value="spotify" <?php selected($item['icon'], 'spotify'); ?>>Spotify</option>
+                                                            <option value="apple-music" <?php selected($item['icon'], 'apple-music'); ?>>Apple Music</option>
+                                                            <option value="soundcloud" <?php selected($item['icon'], 'soundcloud'); ?>>SoundCloud</option>
+                                                            <option value="vimeo" <?php selected($item['icon'], 'vimeo'); ?>>Vimeo</option>
+                                                        </optgroup>
+                                                        <optgroup label="Creative & Design">
+                                                            <option value="dribbble" <?php selected($item['icon'], 'dribbble'); ?>>Dribbble</option>
+                                                            <option value="behance" <?php selected($item['icon'], 'behance'); ?>>Behance</option>
+                                                        </optgroup>
+                                                        <optgroup label="Developer">
+                                                            <option value="github" <?php selected($item['icon'], 'github'); ?>>GitHub</option>
+                                                            <option value="stackoverflow" <?php selected($item['icon'], 'stackoverflow'); ?>>Stack Overflow</option>
+                                                        </optgroup>
+                                                        <optgroup label="Writing & Content">
+                                                            <option value="medium" <?php selected($item['icon'], 'medium'); ?>>Medium</option>
+                                                            <option value="substack" <?php selected($item['icon'], 'substack'); ?>>Substack</option>
+                                                        </optgroup>
+                                                        <optgroup label="Support & Donations">
+                                                            <option value="patreon" <?php selected($item['icon'], 'patreon'); ?>>Patreon</option>
+                                                            <option value="ko-fi" <?php selected($item['icon'], 'ko-fi'); ?>>Ko-fi</option>
+                                                            <option value="buymeacoffee" <?php selected($item['icon'], 'buymeacoffee'); ?>>Buy Me a Coffee</option>
+                                                        </optgroup>
+                                                        <optgroup label="Contact & Other">
+                                                            <option value="email" <?php selected($item['icon'], 'email'); ?>>Email</option>
+                                                            <option value="phone" <?php selected($item['icon'], 'phone'); ?>>Phone</option>
+                                                            <option value="website" <?php selected($item['icon'], 'website'); ?>>Website</option>
+                                                            <option value="link" <?php selected($item['icon'], 'link'); ?>>Link</option>
+                                                            <option value="custom" <?php selected($item['icon'], 'custom'); ?>>Custom Icon...</option>
+                                                        </optgroup>
+                                                    </select>
+                                                </div>
+                                                <div class="twine-social-field twine-social-custom-icon-field" style="<?php echo $item['icon'] !== 'custom' ? 'display: none;' : ''; ?>">
+                                                    <label>Icon URL</label>
+                                                    <input type="url"
+                                                           name="social_custom_icon[]"
+                                                           value="<?php echo isset($item['custom_icon']) ? esc_url($item['custom_icon']) : ''; ?>"
+                                                           placeholder="https://example.com/icon.png"
+                                                           class="twine-social-custom-icon">
+                                                </div>
+                                                <div class="twine-social-field twine-social-name-field">
+                                                    <label>Name</label>
+                                                    <input type="text"
+                                                           name="social_name[]"
+                                                           value="<?php echo esc_attr($item['name']); ?>"
+                                                           placeholder="Social Network Name"
+                                                           class="twine-social-name">
+                                                </div>
+                                                <div class="twine-social-field twine-social-url-field">
+                                                    <label>URL</label>
+                                                    <input type="url"
+                                                           name="social_url[]"
+                                                           value="<?php echo esc_url($item['url']); ?>"
+                                                           placeholder="https://example.com/username"
+                                                           class="twine-social-url"
+                                                           required>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="button twine-remove-social">
+                                                <span class="dashicons dashicons-trash"></span>
+                                            </button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </div>
+
+                            <p>
+                                <select id="twine-add-social" class="twine-add-social-select">
+                                    <option value="">+ Add Social...</option>
+                                    <optgroup label="Social Networks">
+                                        <option value="facebook">Facebook</option>
+                                        <option value="google">Google</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="x">X</option>
+                                        <option value="twitter">Twitter</option>
+                                        <option value="tiktok">TikTok</option>
+                                        <option value="youtube">YouTube</option>
+                                        <option value="linkedin">LinkedIn</option>
+                                        <option value="snapchat">Snapchat</option>
+                                        <option value="pinterest">Pinterest</option>
+                                        <option value="reddit">Reddit</option>
+                                        <option value="threads">Threads</option>
+                                        <option value="bluesky">Bluesky</option>
+                                        <option value="mastodon">Mastodon</option>
+                                    </optgroup>
+                                    <optgroup label="Messaging">
+                                        <option value="discord">Discord</option>
+                                        <option value="telegram">Telegram</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                    </optgroup>
+                                    <optgroup label="Streaming & Music">
+                                        <option value="twitch">Twitch</option>
+                                        <option value="spotify">Spotify</option>
+                                        <option value="apple-music">Apple Music</option>
+                                        <option value="soundcloud">SoundCloud</option>
+                                        <option value="vimeo">Vimeo</option>
+                                    </optgroup>
+                                    <optgroup label="Creative & Design">
+                                        <option value="dribbble">Dribbble</option>
+                                        <option value="behance">Behance</option>
+                                    </optgroup>
+                                    <optgroup label="Developer">
+                                        <option value="github">GitHub</option>
+                                        <option value="stackoverflow">Stack Overflow</option>
+                                    </optgroup>
+                                    <optgroup label="Writing & Content">
+                                        <option value="medium">Medium</option>
+                                        <option value="substack">Substack</option>
+                                    </optgroup>
+                                    <optgroup label="Support & Donations">
+                                        <option value="patreon">Patreon</option>
+                                        <option value="ko-fi">Ko-fi</option>
+                                        <option value="buymeacoffee">Buy Me a Coffee</option>
+                                    </optgroup>
+                                    <optgroup label="Contact & Other">
+                                        <option value="email">Email</option>
+                                        <option value="phone">Phone</option>
+                                        <option value="website">Website</option>
+                                        <option value="link">Link</option>
+                                        <option value="custom">Custom...</option>
+                                    </optgroup>
+                                </select>
+                            </p>
                         </div>
                         </div>
 
@@ -784,6 +907,38 @@ class Twine {
                                                 The URL path for your Twine page. Only lowercase letters, numbers, and hyphens are allowed.<br>
                                                 <strong>Current URL:</strong> <code id="twine-slug-preview"><?php echo home_url('/' . $this->get_slug()); ?></code><br>
                                                 <em>Warning: Changing this will break any existing links to your Twine page.</em>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="twine-page-title">Page Title</label>
+                                        </th>
+                                        <td>
+                                            <input type="text"
+                                                   name="twine_page_title"
+                                                   id="twine-page-title"
+                                                   value="<?php echo esc_attr($this->get_page_title()); ?>"
+                                                   class="regular-text"
+                                                   placeholder="Links">
+                                            <p class="description">
+                                                The browser title for your Twine page. Leave blank to use your profile name or "Links" as default.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">
+                                            <label for="twine-ga-id">Google Analytics ID</label>
+                                        </th>
+                                        <td>
+                                            <input type="text"
+                                                   name="twine_ga_id"
+                                                   id="twine-ga-id"
+                                                   value="<?php echo esc_attr($this->get_ga_id()); ?>"
+                                                   class="regular-text"
+                                                   placeholder="G-XXXXXXXXXX">
+                                            <p class="description">
+                                                Your GA4 Measurement ID (e.g., G-XXXXXXXXXX). If MonsterInsights is installed, this will override its tracking ID for the Twine page.
                                             </p>
                                         </td>
                                     </tr>
@@ -1446,14 +1601,40 @@ class Twine {
     private function get_social_icon($platform) {
         $icons = array(
             'facebook' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
+            'google' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>',
             'instagram' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>',
             'x' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
+            'twitter' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg>',
             'tiktok' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>',
             'youtube' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
             'linkedin' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>',
-            'snapchat' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.166.005c-3.028.07-5.449 2.525-5.449 5.562 0 .203.012.405.037.606-.47.156-.973.326-1.451.488-.358.12-.678.246-.941.356-.236.099-.437.192-.606.27-.091.042-.174.084-.249.124-.124.066-.25.146-.337.224-.149.136-.249.29-.292.445-.064.231.011.49.214.73.191.227.48.43.84.603.097.046.201.092.312.139.073.031.147.064.226.099-.138.521-.321 1.213-.54 2.02-.261.966-.488 1.67-.701 2.164-.098.225-.197.421-.298.588-.075.123-.154.235-.238.34-.159.197-.365.383-.615.556-.37.255-.835.489-1.383.697-.166.063-.329.118-.483.166-.124.038-.241.07-.35.098-.141.037-.27.07-.387.1-.155.04-.296.078-.422.116-.185.056-.347.112-.486.167-.214.083-.395.166-.544.244-.223.117-.405.234-.543.35-.239.201-.38.399-.419.592-.05.243.031.492.227.704.182.197.44.36.765.485.327.125.701.207 1.107.242.072.006.145.012.218.017-.022.172-.043.35-.061.534-.038.359-.058.674-.061.935-.004.259.007.452.034.57.033.14.103.28.206.413.091.117.206.224.34.318.197.138.447.259.74.361.301.104.636.186.995.245.185.03.375.054.567.072.122.011.244.021.366.029-.007.095-.022.187-.044.278-.081.326-.259.618-.529.875-.345.329-.825.609-1.43.833-.219.081-.449.154-.688.221-.203.057-.409.109-.615.157-.278.064-.555.12-.826.165-.374.062-.737.105-1.081.131-.343.025-.668.032-.968.021-.271-.011-.523-.038-.752-.079-.24-.043-.458-.104-.651-.18-.241-.095-.449-.214-.621-.349-.223-.176-.39-.373-.496-.588-.089-.181-.132-.372-.127-.566.004-.161.033-.318.087-.469.069-.193.173-.373.312-.534.192-.222.445-.413.755-.568.123-.062.255-.117.393-.166.12-.042.245-.078.372-.111-.166-.274-.309-.587-.426-.933-.143-.425-.254-.9-.329-1.415-.038-.258-.067-.522-.086-.788-.015-.212-.024-.425-.026-.636-.01-.876.117-1.711.318-2.359.122-.392.266-.729.426-1.001.157-.267.335-.476.527-.623.287-.22.632-.365 1.022-.431.256-.044.529-.059.812-.045.231.012.47.042.713.091.308.062.633.152.966.268.253.088.511.19.771.304.194.085.389.175.583.269.118.057.236.115.353.173-.113-.473-.196-.963-.243-1.463-.027-.285-.043-.572-.045-.858-.009-.977.212-1.896.633-2.687.421-.792 1.048-1.447 1.826-1.909.779-.462 1.717-.725 2.735-.768.284-.012.572-.009.862.009.509.032 1.025.114 1.537.242.514.129.021.27 1.511.452.291.094.572.201.842.319.27.118.529.248.773.388.484.278.933.604 1.331.973.398.369.748.782 1.039 1.231.291.449.525.935.694 1.453.169.517.274 1.066.312 1.635.019.286.025.575.019.866-.013.58-.081 1.165-.201 1.738-.06.286-.132.569-.216.846.231-.116.467-.226.706-.329.309-.133.623-.248.937-.343.203-.061.405-.113.606-.156.162-.034.323-.062.481-.082.118-.016.234-.028.347-.036.084-.006.167-.009.247-.009.457-.002.866.063 1.217.195.351.132.645.329.878.589.176.196.313.421.409.671.079.207.124.427.135.656.014.292-.038.591-.155.882-.108.271-.269.53-.48.77-.243.275-.549.526-.916.75-.271.166-.574.315-.908.447-.195.077-.397.148-.605.214-.119.037-.239.073-.36.106.141.087.295.17.464.249.303.142.655.267 1.051.376.257.071.529.134.81.189.224.043.455.082.687.115.164.024.328.045.492.062.117.012.234.022.349.03.316.022.619.027.902.012.283-.015.549-.049.794-.103.246-.054.473-.127.679-.218.206-.091.391-.201.554-.329.163-.128.304-.273.424-.435.119-.161.217-.339.293-.531.115-.291.167-.612.155-.933-.011-.293-.076-.582-.191-.856-.115-.274-.279-.53-.49-.76-.211-.23-.468-.432-.768-.601-.3-.169-.639-.298-1.011-.385-.186-.043-.378-.077-.573-.103-.097-.013-.194-.024-.292-.033.009-.081.022-.161.038-.239.078-.382.216-.732.414-1.049.253-.406.604-.765 1.048-1.074.267-.186.567-.349.897-.488.243-.102.5-.19.766-.264.195-.054.393-.099.593-.136.14-.026.281-.048.422-.066.101-.013.202-.023.303-.031.351-.028.689-.02 1.008.023.319.043.62.118.898.224.278.106.536.243.771.411.235.168.447.367.633.595.186.228.346.487.478.773.132.286.235.601.307.941.071.34.11.705.114 1.091.004.386-.028.793-.096 1.218-.069.424-.175.864-.318 1.315-.143.451-.322.911-.536 1.373-.107.232-.223.462-.346.689-.062.113-.124.226-.188.338-.128.225-.263.447-.403.664-.28.435-.585.853-.912 1.245-.328.392-.678.757-1.049 1.093-.185.167-.374.326-.567.476-.145.113-.292.221-.441.325.263.017.537.027.82.028.546.003 1.084-.029 1.597-.098.513-.069 1-.176 1.456-.319.456-.143.879-.322 1.262-.535.383-.213.726-.463 1.024-.746.298-.283.548-.601.746-.95.197-.349.342-.731.428-1.141.086-.41.113-.848.08-1.312-.033-.463-.135-.949-.306-1.452-.063-.187-.138-.376-.223-.566-.044-.098-.091-.197-.14-.295.139-.011.282-.014.427-.009.349.013.704.063 1.058.148.354.085.703.206 1.043.364.341.157.669.349.979.574.31.224.601.483.868.772.267.289.508.608.716.953.208.344.378.713.508 1.103.13.39.218.798.262 1.221.044.422.044.856 0 1.298-.044.442-.14.89-.286 1.339-.146.449-.345.897-.594 1.337-.125.22-.263.436-.414.648-.113.16-.232.316-.357.468-.251.306-.531.598-.835.871-.609.547-1.329 1.032-2.151 1.449-.616.313-1.289.585-2.016.814-.435.137-.891.259-1.364.366-.354.08-.718.152-1.09.215-.262.044-.528.084-.798.119-.194.025-.389.048-.586.068-.279.028-.562.051-.846.069-.379.024-.762.041-1.148.049-.772.017-1.56.002-2.361-.047.056.141.098.29.127.445.057.315.066.655.023 1.017-.064.534-.247 1.104-.555 1.707-.386.755-.999 1.502-1.833 2.233-.667.585-1.465 1.138-2.383 1.654-.687.386-1.441.739-2.254 1.056-.611.238-1.253.455-1.923.649-.503.145-1.021.275-1.549.39-.374.082-.752.156-1.134.223-.273.048-.548.092-.825.132-.395.057-.792.107-1.191.149-.531.056-1.067.095-1.605.119-.539.024-1.08.032-1.624.025-.544-.007-1.09-.029-1.637-.067-.274-.019-.549-.042-.824-.069-.196-.019-.391-.04-.587-.063-.276-.033-.553-.069-.829-.109-.369-.053-.738-.113-1.107-.18-.738-.133-1.475-.292-2.208-.476-.733-.184-1.461-.395-2.183-.634-.722-.239-1.436-.506-2.139-.802-.703-.296-1.396-.622-2.074-.978-.678-.356-1.341-.745-1.984-1.165-.644-.42-1.268-.874-1.869-1.363-.6-.488-1.177-1.012-1.726-1.574-.274-.281-.539-.57-.793-.869-.19-.224-.375-.454-.552-.689-.355-.47-.681-.959-.975-1.468-.588-.92-1.076-1.906-1.459-2.951-.287-.784-.52-1.598-.698-2.437-.134-.63-.235-1.273-.302-1.927-.05-.49-.08-.984-.089-1.481-.01-.49.004-.981.039-1.472.035-.491.095-.98.179-1.465.084-.485.192-.966.324-1.44.132-.474.288-.941.469-1.4.181-.459.385-.908.614-1.346.229-.438.482-.864.759-1.277.277-.413.577-.811.901-1.193.325-.382.673-.747 1.044-1.093.37-.346.763-.672 1.177-.978.207-.153.419-.302.636-.445.163-.108.329-.213.497-.314.337-.202.683-.388 1.038-.559.709-.342 1.457-.627 2.239-.853.586-.17 1.193-.307 1.817-.413.468-.079.944-.14 1.427-.183.362-.032.727-.055 1.095-.068.276-.01.552-.015.829-.014.554.002 1.109.022 1.663.062.554.04 1.107.099 1.657.175.55.076 1.097.171 1.64.283.543.112 1.082.243 1.615.392.533.149 1.061.316 1.582.5.521.184 1.034.386 1.536.605.502.219.995.454 1.477.704.241.125.479.255.714.389.176.101.351.205.523.311.345.212.684.433 1.015.662.663.459 1.297.95 1.896 1.473.3.262.589.533.868.814.209.211.412.428.609.649.393.442.762.901 1.105 1.375.343.474.659.963.948 1.466.289.503.551 1.019.785 1.545.234.526.439 1.063.617 1.608.089.273.169.548.242.825.055.208.104.417.149.627.089.421.159.846.209 1.275.025.214.045.429.06.645.008.108.014.216.019.325v.326c0 .217-.007.433-.021.649-.014.216-.035.432-.062.648-.027.216-.06.431-.099.645-.039.214-.084.427-.135.639-.051.212-.108.423-.171.633-.063.21-.131.419-.206.627-.075.208-.155.414-.241.619-.086.205-.178.408-.275.609-.097.201-.199.4-.306.598-.107.198-.22.393-.337.587-.117.194-.239.386-.366.577-.127.191-.258.38-.395.567-.137.187-.278.372-.424.554-.146.182-.297.363-.452.541-.155.178-.314.354-.477.528-.163.174-.331.346-.502.515-.171.169-.346.336-.525.5-.179.164-.361.326-.547.484-.186.158-.375.314-.568.468-.193.154-.388.305-.587.453-.199.148-.401.293-.605.436-.204.143-.411.282-.62.419-.209.137-.42.272-.634.404-.214.132-.429.261-.647.387-.218.126-.438.249-.66.369-.222.12-.446.237-.671.352-.225.115-.452.226-.68.335-.228.109-.458.215-.689.317-.231.102-.463.201-.697.297-.234.096-.469.189-.706.279-.237.09-.475.177-.715.261-.24.084-.481.165-.723.242-.242.077-.485.152-.729.223-.244.071-.489.139-.735.204-.246.065-.493.126-.741.185-.248.059-.497.114-.747.167-.25.053-.501.103-.752.149-.251.046-.503.089-.755.129-.252.04-.505.076-.758.11-.253.034-.507.065-.762.092-.255.027-.51.051-.765.072-.255.021-.511.039-.767.053-.256.014-.512.025-.769.033-.257.008-.513.014-.77.017-.257.003-.514.003-.77 0-.257-.003-.513-.009-.77-.019-.257-.01-.513-.024-.769-.041-.513-.034-1.025-.082-1.536-.146-.511-.064-1.021-.142-1.53-.234-.509-.092-1.015-.199-1.52-.321-.505-.122-1.006-.259-1.505-.411-.499-.152-.995-.319-1.489-.501-.494-.182-.983-.379-1.469-.591-.486-.212-.968-.439-1.446-.681-.478-.242-.952-.499-1.422-.77-.47-.271-.935-.558-1.395-.859-.46-.301-.916-.617-1.365-.947-.449-.33-.894-.675-1.332-1.034-.438-.359-.87-.732-1.296-1.119-.426-.387-.845-.788-1.258-1.203-.413-.415-.818-.843-1.216-1.284-.398-.441-.788-.896-1.17-1.364-.382-.468-.755-.948-1.119-1.441-.364-.493-.718-1-.063-1.518-.345-.518-.68-1.047-1.005-1.587-.325-.54-.638-1.091-.941-1.652-.303-.561-.594-1.133-.873-1.714-.279-.581-.546-1.172-.799-1.771-.253-.599-.493-1.208-.718-1.824-.225-.616-.435-1.24-.631-1.871-.196-.631-.377-1.269-.543-1.913-.166-.644-.317-1.295-.452-1.95-.135-.655-.254-1.316-.358-1.981-.104-.665-.191-1.333-.263-2.005-.072-.672-.128-1.347-.168-2.024-.04-.677-.064-1.357-.072-2.038-.008-.681.001-1.364.027-2.048.026-.684.068-1.369.126-2.055.058-.686.132-1.373.221-2.059.089-.686.194-1.372.314-2.056.12-.684.256-1.367.407-2.047.151-.68.318-1.358.5-2.033.182-.675.379-1.347.592-2.016.213-.669.441-1.333.684-1.993.243-.66.501-1.316.774-1.967.273-.651.561-1.296.863-1.936.302-.64.619-1.273.95-1.9.331-.627.676-1.247 1.035-1.86.359-.613.732-1.218 1.118-1.816.386-.598.786-1.187 1.199-1.767.413-.58.839-1.149 1.278-1.708.439-.559.891-1.107 1.355-1.643.464-.536.941-1.06 1.429-1.572.488-.512.988-1.01 1.5-1.495.512-.485 1.035-.956 1.569-1.413.534-.457 1.079-.898 1.635-1.324.556-.426 1.122-.837 1.698-1.232.576-.395 1.162-.773 1.758-1.136.596-.363 1.201-.709 1.815-1.038.614-.329 1.237-.641 1.868-.936.631-.295 1.27-.572 1.917-.831.647-.259 1.301-.5 1.962-.724.661-.224 1.329-.429 2.003-.617.674-.188 1.353-.357 2.038-.509.685-.152 1.375-.286 2.07-.402.695-.116 1.394-.214 2.097-.294.703-.08 1.409-.142 2.119-.186.71-.044 1.422-.07 2.137-.079.715-.009 1.432-.001 2.15.025.718.026 1.438.069 2.158.13.36.03.721.065 1.081.105z"/></svg>',
+            'pinterest' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/></svg>',
+            'reddit' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>',
+            'discord' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>',
+            'twitch' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>',
+            'spotify' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>',
+            'apple-music' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.401-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.295-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.042-1.785-.49-2.166-1.373-.39-.896-.163-1.98.266-2.59.39-.56.93-.88 1.584-1.002.664-.124 1.332-.09 2.001-.09V9.934c0-.18.01-.18-.18-.143l-6.347 1.2c-.03.006-.062.013-.09.03-.012.008-.024.04-.024.064-.003.63-.003 6.86-.004 7.49 0 .397-.058.79-.24 1.156-.283.57-.745.937-1.36 1.12-.344.104-.7.163-1.062.18-.93.046-1.754-.452-2.15-1.306-.443-.948-.158-2.14.565-2.833.39-.373.872-.586 1.404-.678.674-.117 1.353-.084 2.03-.082.022 0 .042-.013.063-.02v-6.57c0-.292.087-.524.32-.7.174-.13.37-.2.58-.24l7.467-1.412c.084-.016.17-.027.255-.027.32 0 .59.223.59.564v4.38z"/></svg>',
+            'soundcloud' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M1.175 12.225c-.051 0-.094.046-.101.1l-.233 2.154.233 2.105c.007.058.05.098.101.098.05 0 .09-.04.099-.098l.255-2.105-.27-2.154c-.009-.06-.052-.1-.1-.1m-.899.828c-.06 0-.091.037-.104.094L0 14.479l.165 1.308c.014.057.045.094.09.094s.089-.037.099-.094l.19-1.308-.19-1.334c-.01-.057-.044-.09-.09-.09m1.83-1.229c-.061 0-.12.045-.12.104l-.21 2.563.225 2.458c0 .06.045.104.106.104.061 0 .12-.044.12-.104l.24-2.458-.24-2.563c0-.06-.059-.104-.12-.104m.945-.089c-.075 0-.135.06-.15.135l-.193 2.64.21 2.544c.016.077.075.138.149.138.075 0 .135-.061.15-.138l.225-2.544-.225-2.64c-.015-.075-.06-.135-.135-.135m.93-.132c-.09 0-.149.075-.164.164l-.18 2.79.195 2.595c.015.09.075.149.165.149s.149-.06.164-.149l.21-2.595-.21-2.79c-.015-.09-.075-.164-.18-.164m1.005-.166c-.104 0-.179.09-.194.194l-.18 2.97.18 2.655c.015.09.09.18.194.18.104 0 .18-.09.18-.18l.195-2.655-.195-2.97c0-.104-.076-.194-.18-.194m.944-.089c-.12 0-.209.104-.224.224l-.165 3.074.165 2.655c.015.12.105.21.225.21.119 0 .209-.09.224-.21l.18-2.655-.18-3.074c-.015-.12-.105-.224-.225-.224m1.005-.165c-.135 0-.239.119-.254.254l-.15 3.27.165 2.685c.015.12.119.239.254.239.12 0 .239-.119.254-.239l.165-2.685-.165-3.27c-.015-.135-.119-.254-.269-.254m.989-.075c-.149 0-.269.135-.284.284l-.134 3.36.149 2.685c.015.135.12.27.284.27.15 0 .27-.135.284-.27l.165-2.685-.165-3.36c-.015-.149-.135-.284-.299-.284m1.096.045c-.164 0-.299.15-.314.314l-.135 3.33.15 2.685c.015.15.149.3.314.3.149 0 .299-.15.314-.3l.165-2.685-.165-3.33c-.015-.165-.165-.314-.329-.314m1.11-.135c-.18 0-.329.165-.344.344l-.12 3.48.135 2.67c.015.165.165.33.344.33.165 0 .33-.165.345-.33l.149-2.67-.149-3.48c-.015-.18-.165-.344-.36-.344m1.065.225c-.195 0-.344.18-.359.359l-.105 3.285.119 2.67c.016.18.165.36.36.36.18 0 .344-.18.359-.36l.12-2.67-.12-3.285c-.015-.18-.164-.359-.374-.359m1.14-.329c-.21 0-.374.18-.39.39l-.104 3.6.12 2.655c.014.195.179.375.389.375.196 0 .375-.18.391-.375l.119-2.655-.12-3.6c-.015-.21-.18-.39-.405-.39m1.124-.028c-.209 0-.389.194-.404.404l-.09 3.614.104 2.655c.016.21.196.39.405.39.21 0 .39-.18.405-.39l.12-2.655-.12-3.614c-.016-.21-.196-.404-.42-.404m1.215-.404c-.225 0-.405.21-.42.42l-.09 4.005.105 2.655c.015.225.195.42.42.42.209 0 .405-.195.42-.42l.105-2.655-.105-4.005c-.015-.21-.21-.42-.435-.42m1.125.375c-.24 0-.42.225-.435.45l-.074 3.614.089 2.64c.016.24.195.435.435.435.225 0 .42-.195.435-.435l.105-2.64-.105-3.614c-.015-.24-.21-.45-.45-.45m1.17-.614c-.254 0-.449.24-.464.479l-.075 4.26.09 2.624c.015.255.21.48.465.48.24 0 .449-.225.464-.48l.105-2.624-.105-4.26c-.015-.239-.225-.479-.48-.479m1.065.614c-.27 0-.465.255-.48.51l-.06 3.63.075 2.625c.015.255.21.495.48.495.255 0 .465-.24.48-.495l.09-2.625-.09-3.63c-.015-.255-.225-.51-.495-.51m1.155-.404c-.285 0-.495.27-.51.54l-.06 4.065.075 2.61c.015.27.225.51.51.51.27 0 .495-.24.51-.51l.09-2.61-.09-4.065c-.015-.27-.24-.54-.525-.54m1.11.449c-.3 0-.51.284-.525.569l-.045 3.6.06 2.61c.015.285.225.54.525.54.285 0 .51-.255.525-.54l.075-2.61-.075-3.6c-.015-.285-.24-.57-.54-.57m1.185-.584c-.314 0-.539.3-.554.585l-.045 4.185.06 2.595c.015.3.24.57.555.57.3 0 .54-.27.555-.57l.075-2.595-.075-4.185c-.015-.285-.255-.585-.57-.585m1.065.449c-.045 0-.075-.015-.105-.015-.3 0-.524.285-.539.585l-.03 3.75.045 2.58c.015.315.24.585.555.585.03 0 .06 0 .09-.015.255-.03.45-.27.465-.555l.06-2.595-.06-3.75c-.015-.3-.24-.57-.48-.57m2.61-.135a3.58 3.58 0 00-1.53.345c-.285-3.285-3.015-5.864-6.359-5.864-1.68 0-3.21.66-4.215 1.545-.42.36-.465.66-.465.99v10.77c.015.345.255.645.585.705.06.015 7.83.015 11.925.015 1.95 0 3.54-1.59 3.54-3.555 0-1.965-1.575-3.555-3.54-3.555"/></svg>',
+            'telegram' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>',
+            'whatsapp' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>',
+            'threads' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.59 12c.025 3.086.718 5.496 2.057 7.164 1.432 1.781 3.632 2.695 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.96-.065-1.182.408-2.256 1.33-3.022.898-.745 2.176-1.18 3.792-1.29.492-.034.964-.045 1.414-.032-.087-.467-.264-.883-.554-1.207-.467-.523-1.205-.798-2.196-.817l-.076-.002c-.752 0-1.69.212-2.376.726l-1.148-1.696c.858-.608 2.108-1.074 3.476-1.15l.18-.005c1.594 0 2.895.533 3.763 1.542.651.756 1.05 1.727 1.196 2.878.504.103.977.238 1.419.408 2.14.825 3.386 2.396 3.508 4.428.073 1.214-.274 2.43-1.012 3.54-1.09 1.64-2.937 2.726-5.353 3.147-1.056.183-2.146.245-3.086.112-1.042-.147-1.976-.478-2.724-.953l1.06-1.788c1.005.552 2.371.801 3.85.574 1.725-.266 3.056-1.06 3.837-2.292.485-.764.69-1.564.637-2.304-.097-1.355-1.115-2.176-2.322-2.622a7.79 7.79 0 00-.595-.192c-.049.807-.174 1.55-.377 2.224-.352 1.171-.938 2.15-1.746 2.91-1.138 1.071-2.636 1.633-4.337 1.633-.3 0-.608-.015-.918-.048-1.44-.15-2.717-.682-3.593-1.5-.843-.789-1.313-1.811-1.358-2.959-.045-1.13.347-2.191 1.137-3.074.88-.983 2.233-1.624 3.918-1.858.462-.064.951-.1 1.467-.108a15.03 15.03 0 012.016.086c.074-.428.105-.878.096-1.344l-.006-.208h2.136l.014.316c.025.585-.008 1.144-.1 1.68.337.074.67.163.994.266 1.395.442 2.465 1.205 3.105 2.208.757 1.19 1.01 2.593.735 4.072-.454 2.447-2.247 4.142-5.049 4.772-1.006.226-2.135.333-3.298.314zm-1.21-8.03c-1.07.066-1.892.35-2.435.838-.38.34-.568.742-.549 1.163.022.41.233.78.629 1.067.509.37 1.247.576 2.08.576.025 0 .05 0 .074-.001 1.124-.057 1.99-.455 2.575-1.182.47-.585.763-1.387.877-2.393-.922-.094-2.06-.13-3.25-.068z"/></svg>',
+            'bluesky' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 01-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>',
+            'mastodon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.268 5.313c-.35-2.578-2.617-4.61-5.304-5.004C17.51.242 15.792 0 11.813 0h-.03c-3.98 0-4.835.242-5.288.309C3.882.692 1.496 2.518.917 5.127.64 6.412.61 7.837.661 9.143c.074 1.874.088 3.745.26 5.611.118 1.24.325 2.47.62 3.68.55 2.237 2.777 4.098 4.96 4.857 2.336.792 4.849.923 7.256.38.265-.061.527-.132.786-.213.585-.184 1.27-.39 1.774-.753a.057.057 0 00.023-.043v-1.809a.052.052 0 00-.02-.041.053.053 0 00-.046-.01 20.282 20.282 0 01-4.709.545c-2.73 0-3.463-1.284-3.674-1.818a5.593 5.593 0 01-.319-1.433.053.053 0 01.066-.054c1.517.363 3.072.546 4.632.546.376 0 .75 0 1.125-.01 1.57-.044 3.224-.124 4.768-.422.038-.008.077-.015.11-.024 2.435-.464 4.753-1.92 4.989-5.604.008-.145.03-1.52.03-1.67.002-.512.167-3.63-.024-5.545zm-3.748 9.195h-2.561V8.29c0-1.309-.55-1.976-1.67-1.976-1.23 0-1.846.79-1.846 2.35v3.403h-2.546V8.663c0-1.56-.617-2.35-1.848-2.35-1.112 0-1.668.668-1.67 1.977v6.218H4.822V8.102c0-1.31.337-2.35 1.011-3.12.696-.77 1.608-1.164 2.74-1.164 1.311 0 2.302.5 2.962 1.498l.638 1.06.638-1.06c.66-.999 1.65-1.498 2.96-1.498 1.13 0 2.043.395 2.74 1.164.675.77 1.012 1.81 1.012 3.12z"/></svg>',
+            'patreon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg>',
+            'ko-fi' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.022 11.822c.164 2.424 2.586 2.672 2.586 2.672s8.267-.023 11.966-.049c2.438-.426 2.683-2.566 2.658-3.734 4.352.24 7.422-2.831 6.649-6.916zm-11.062 3.511c-1.246 1.453-4.011 3.976-4.011 3.976s-.121.119-.31.023c-.076-.057-.108-.09-.108-.09-.443-.441-3.368-3.049-4.034-3.954-.709-.965-1.041-2.7-.091-3.71.951-1.01 3.005-1.086 4.363.407 0 0 1.565-1.782 3.468-.963 1.904.82 1.832 3.011.723 4.311zm6.173.478c-.928.116-1.682.028-1.682.028V7.284h1.77s1.971.551 1.971 2.638c0 1.913-.985 2.667-2.059 3.015z"/></svg>',
+            'buymeacoffee' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-1.001-1.379-.197-.069-.42-.098-.57-.241-.152-.143-.196-.366-.231-.572-.065-.378-.125-.756-.192-1.133-.057-.325-.102-.69-.25-.987-.195-.4-.597-.634-.996-.788a5.723 5.723 0 00-.626-.194c-1-.263-2.05-.36-3.077-.416a25.834 25.834 0 00-3.7.062c-.915.083-1.88.184-2.75.5-.318.116-.646.256-.888.501-.297.302-.393.77-.177 1.146.154.267.415.456.692.58.36.162.737.284 1.123.366 1.075.238 2.189.331 3.287.37 1.218.05 2.437.01 3.65-.118.299-.033.598-.073.896-.119.352-.054.578-.513.474-.834-.124-.383-.457-.531-.834-.473-.466.074-.96.108-1.382.146-1.177.08-2.358.082-3.536.006a22.228 22.228 0 01-1.157-.107c-.086-.01-.18-.025-.258-.036-.243-.036-.484-.08-.724-.13-.111-.027-.111-.185 0-.212h.005c.277-.06.557-.108.838-.147h.002c.131-.009.263-.032.394-.048a25.076 25.076 0 013.426-.12c.674.019 1.347.067 2.017.144l.228.031c.267.04.533.088.798.145.392.085.895.113 1.07.542.055.137.08.288.111.431l.319 1.484a.237.237 0 01-.199.284h-.003c-.037.006-.075.01-.112.015a36.704 36.704 0 01-4.743.295 37.059 37.059 0 01-4.699-.304c-.14-.017-.293-.042-.417-.06-.326-.048-.649-.108-.973-.161-.393-.065-.768-.032-1.123.161-.29.16-.527.404-.675.701-.154.316-.199.66-.267 1-.069.34-.176.707-.135 1.056.087.753.613 1.365 1.37 1.502a39.69 39.69 0 0011.343.376.483.483 0 01.535.53l-.071.697-1.018 9.907c-.041.41-.047.832-.125 1.237-.122.637-.553 1.028-1.182 1.171-.577.131-1.165.2-1.756.205-.656.004-1.31-.025-1.966-.022-.699.004-1.556-.06-2.095-.58-.475-.458-.54-1.174-.605-1.793l-.731-7.013-.322-3.094c-.037-.351-.286-.695-.678-.678-.336.015-.718.3-.678.679l.228 2.185.949 9.112c.147 1.344 1.174 2.068 2.446 2.272.742.12 1.503.144 2.257.156.966.016 1.942.053 2.892-.122 1.408-.258 2.465-1.198 2.616-2.657.34-3.332.683-6.663 1.024-9.995l.215-2.087a.484.484 0 01.39-.426c.402-.078.787-.212 1.074-.518.455-.488.546-1.124.385-1.766zm-1.478.772c-.145.137-.363.201-.578.233-2.416.359-4.866.54-7.308.46-1.748-.06-3.477-.254-5.207-.498-.17-.024-.353-.055-.47-.18-.22-.236-.111-.71-.054-.995.052-.26.152-.609.463-.646.484-.057 1.046.148 1.526.22.577.088 1.156.159 1.737.212 2.48.226 5.002.19 7.472-.14.45-.06.899-.13 1.345-.21.399-.072.84-.206 1.08.206.166.281.188.657.162.974a.544.544 0 01-.169.364zm-6.159 3.9c-.862.37-1.84.788-3.109.788a5.884 5.884 0 01-1.569-.217l.877 9.004c.065.78.717 1.38 1.5 1.38 0 0 1.243.065 1.658.065.447 0 1.786-.065 1.786-.065.783 0 1.434-.6 1.499-1.38l.94-9.95a3.996 3.996 0 00-1.322-.238c-.826 0-1.491.284-2.26.613z"/></svg>',
             'github' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
-            'website' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm9.5 12c0 1.657-.425 3.214-1.173 4.576l-1.025-.396c-.494-.191-.842-.586-1.025-1.071l-.399-1.057c-.084-.224-.136-.458-.157-.696l-.073-.848a2.118 2.118 0 0 0-.589-1.318l-1.05-1.05a2.113 2.113 0 0 0-1.497-.62h-.9a2.118 2.118 0 0 0-1.5.621l-.9.9c-.4.4-.621.943-.621 1.5v1.2c0 .233.038.465.114.686l.457 1.371c.115.345.173.708.173 1.074v.729a2.117 2.117 0 0 0 1.06 1.833l.64.366c.212.121.451.184.693.184h1.5c.829 0 1.5-.671 1.5-1.5v-1.2c0-.398.158-.779.439-1.061l.9-.9a2.113 2.113 0 0 1 1.497-.62h.364c.133 0 .266.013.396.038a9.511 9.511 0 0 1-8.139 6.673v-.711c0-.828-.672-1.5-1.5-1.5h-1.2a2.113 2.113 0 0 0-2.121 2.121c0 .233.038.465.114.686l.057.171c.115.345.173.708.173 1.074v.193A9.484 9.484 0 0 1 2.5 12C2.5 6.752 6.701 2.5 12 2.5c5.299 0 9.5 4.252 9.5 9.5z"/></svg>'
+            'snapchat' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301a.32.32 0 01.114-.023.44.44 0 01.323.137c.095.1.138.234.12.369-.035.27-.215.51-.51.642-.09.045-.195.075-.315.105-.03.015-.09.03-.165.045-.18.045-.42.105-.57.195-.16.1-.255.21-.285.36-.015.105-.015.21.015.315.09.36.255.645.39.9.33.555.675 1.125.975 1.755.49.645 1.095 1.065 1.635 1.32.165.075.33.135.45.18.135.45.255.09.315.105l.045.015c.69.21 1.02.555 1.02.87 0 .24-.135.465-.45.66-.39.24-.96.39-1.74.465-.12.015-.195.06-.24.105-.045.06-.06.12-.075.195-.015.045-.03.105-.06.165-.04.1-.065.175-.085.245-.02.07-.038.148-.063.24-.025.092-.06.18-.09.27-.045.105-.15.195-.315.195a2.3 2.3 0 01-.345-.03 7.003 7.003 0 00-1.07-.063c-.33 0-.69.03-1.08.09-.255.045-.525.15-.855.3-.555.21-1.065.435-1.62.435h-.075c-.555 0-1.08-.225-1.635-.435-.315-.15-.585-.255-.855-.3-.39-.06-.75-.09-1.08-.09-.39 0-.72.03-1.05.063a2.3 2.3 0 01-.36.03c-.15 0-.27-.09-.315-.195-.045-.12-.075-.24-.12-.36-.03-.075-.045-.135-.06-.165-.03-.06-.045-.12-.075-.195-.045-.045-.12-.09-.24-.105-.78-.075-1.35-.225-1.74-.465-.315-.195-.45-.42-.45-.66 0-.315.33-.66 1.02-.87l.045-.015c.06-.015.18-.06.315-.105a3.44 3.44 0 00.465-.18c.525-.24 1.11-.675 1.62-1.305.315-.615.66-1.2.975-1.755.135-.255.3-.54.39-.9.03-.105.03-.21.015-.315-.03-.15-.135-.255-.285-.36-.135-.09-.39-.15-.57-.195-.075-.015-.135-.03-.165-.045-.12-.03-.225-.06-.315-.105-.295-.132-.475-.372-.51-.643-.02-.135.025-.27.12-.37a.45.45 0 01.323-.137.32.32 0 01.114.023c.36.18.72.3 1.035.301.195 0 .315-.045.39-.09l-.03-.51-.003-.06c-.105-1.63-.23-3.655.3-4.848C7.84 1.069 11.2.793 12.2.793z"/></svg>',
+            'vimeo' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.977 6.416c-.105 2.338-1.739 5.543-4.894 9.609-3.268 4.247-6.026 6.37-8.29 6.37-1.409 0-2.578-1.294-3.553-3.881L5.322 11.4C4.603 8.816 3.834 7.522 3.01 7.522c-.179 0-.806.378-1.881 1.132L0 7.197c1.185-1.044 2.351-2.084 3.501-3.128C5.08 2.701 6.266 1.984 7.055 1.91c1.867-.18 3.016 1.1 3.447 3.838.465 2.953.789 4.789.971 5.507.539 2.45 1.131 3.674 1.776 3.674.502 0 1.256-.796 2.265-2.385 1.004-1.589 1.54-2.797 1.612-3.628.144-1.371-.395-2.061-1.614-2.061-.574 0-1.167.121-1.777.391 1.186-3.868 3.434-5.757 6.762-5.637 2.473.06 3.628 1.664 3.493 4.797l-.013.01z"/></svg>',
+            'dribbble' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 24C5.385 24 0 18.615 0 12S5.385 0 12 0s12 5.385 12 12-5.385 12-12 12zm10.12-10.358c-.35-.11-3.17-.953-6.384-.438 1.34 3.684 1.887 6.684 1.992 7.308 2.3-1.555 3.936-4.02 4.395-6.87zm-6.115 7.808c-.153-.9-.75-4.032-2.19-7.77l-.066.02c-5.79 2.015-7.86 6.025-8.04 6.4 1.73 1.358 3.92 2.166 6.29 2.166 1.42 0 2.77-.29 4-.814zm-11.62-2.58c.232-.4 3.045-5.055 8.332-6.765.135-.045.27-.084.405-.12-.26-.585-.54-1.167-.832-1.74C7.17 11.775 2.206 11.71 1.756 11.7l-.004.312c0 2.633.998 5.037 2.634 6.855zm-2.42-8.955c.46.008 4.683.026 9.477-1.248-1.698-3.018-3.53-5.558-3.8-5.928-2.868 1.35-5.01 3.99-5.676 7.17zM9.6 2.052c.282.38 2.145 2.914 3.822 6 3.645-1.365 5.19-3.44 5.373-3.702-1.81-1.61-4.19-2.586-6.795-2.586-.825 0-1.63.1-2.4.285zm10.335 3.483c-.218.29-1.935 2.493-5.724 4.04.24.49.47.985.68 1.486.08.18.15.36.22.53 3.41-.43 6.8.26 7.14.33-.02-2.42-.88-4.64-2.31-6.38z"/></svg>',
+            'behance' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6.938 4.503c.702 0 1.34.06 1.92.188.577.13 1.07.33 1.485.61.41.28.733.65.96 1.12.225.47.34 1.05.34 1.73 0 .74-.17 1.36-.507 1.86-.338.5-.837.9-1.502 1.22.906.26 1.576.72 2.022 1.37.448.66.665 1.45.665 2.36 0 .75-.13 1.39-.41 1.93-.28.55-.67 1-1.16 1.35-.48.348-1.05.6-1.67.767-.61.165-1.252.254-1.91.254H0V4.51h6.938v-.007zM6.545 9.8c.568 0 1.053-.13 1.45-.41.395-.27.59-.72.59-1.34 0-.35-.06-.64-.19-.87-.13-.23-.3-.42-.52-.55-.21-.13-.47-.22-.76-.27-.29-.05-.6-.08-.94-.08H3.484V9.8h3.06zm.25 5.88c.39 0 .77-.04 1.12-.13.36-.09.67-.24.94-.44.27-.2.48-.46.64-.79.16-.33.24-.74.24-1.22 0-.97-.27-1.67-.81-2.09-.54-.42-1.26-.63-2.15-.63H3.48v5.3h3.32zm8.595-7.19h5.61v1.3h-5.61v-1.3zm3.03 8.15c.41.47.98.71 1.72.71.52 0 .97-.13 1.35-.39.38-.26.62-.55.73-.87h2.42c-.38 1.2-.97 2.06-1.76 2.59-.79.54-1.74.8-2.86.8-.78 0-1.48-.13-2.1-.39-.63-.26-1.16-.62-1.59-1.08-.43-.46-.76-1-.99-1.65-.23-.64-.34-1.35-.34-2.12 0-.75.12-1.44.35-2.08.23-.64.56-1.19 1-1.66.43-.47.96-.84 1.57-1.1.61-.26 1.29-.39 2.05-.39.85 0 1.59.15 2.22.46.63.3 1.15.72 1.55 1.27.4.54.7 1.17.89 1.9.19.71.26 1.49.22 2.31h-7.23c.04.91.31 1.63.72 2.12v.01zm3.35-5.09c-.34-.4-.86-.61-1.55-.61-.45 0-.84.08-1.15.24-.31.16-.56.36-.75.59-.19.23-.33.48-.41.76-.08.28-.14.55-.16.81h4.69c-.1-.74-.35-1.38-.68-1.79h.01z"/></svg>',
+            'medium' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13.54 12a6.8 6.8 0 01-6.77 6.82A6.8 6.8 0 010 12a6.8 6.8 0 016.77-6.82A6.8 6.8 0 0113.54 12zM20.96 12c0 3.54-1.51 6.42-3.38 6.42-1.87 0-3.39-2.88-3.39-6.42s1.52-6.42 3.39-6.42 3.38 2.88 3.38 6.42M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12z"/></svg>',
+            'substack' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812V24L12 18.11 22.54 24V10.812H1.46zM22.54 0H1.46v2.836h21.08V0z"/></svg>',
+            'stackoverflow' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15.725 0l-1.72 1.277 6.39 8.588 1.72-1.277L15.725 0zm-3.94 3.418l-1.369 1.644 8.225 6.85 1.369-1.644-8.225-6.85zm-3.15 4.465l-.905 1.94 9.702 4.517.904-1.94-9.701-4.517zm-1.85 4.86l-.44 2.093 10.473 2.201.44-2.092-10.473-2.203zM1.89 15.47V24h19.19v-8.53h-2.133v6.397H4.021v-6.396H1.89zm4.265 2.133v2.13h10.66v-2.13H6.154Z"/></svg>',
+            'email' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>',
+            'phone' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>',
+            'website' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm9.5 12c0 1.657-.425 3.214-1.173 4.576l-1.025-.396c-.494-.191-.842-.586-1.025-1.071l-.399-1.057c-.084-.224-.136-.458-.157-.696l-.073-.848a2.118 2.118 0 0 0-.589-1.318l-1.05-1.05a2.113 2.113 0 0 0-1.497-.62h-.9a2.118 2.118 0 0 0-1.5.621l-.9.9c-.4.4-.621.943-.621 1.5v1.2c0 .233.038.465.114.686l.457 1.371c.115.345.173.708.173 1.074v.729a2.117 2.117 0 0 0 1.06 1.833l.64.366c.212.121.451.184.693.184h1.5c.829 0 1.5-.671 1.5-1.5v-1.2c0-.398.158-.779.439-1.061l.9-.9a2.113 2.113 0 0 1 1.497-.62h.364c.133 0 .266.013.396.038a9.511 9.511 0 0 1-8.139 6.673v-.711c0-.828-.672-1.5-1.5-1.5h-1.2a2.113 2.113 0 0 0-2.121 2.121c0 .233.038.465.114.686l.057.171c.115.345.173.708.173 1.074v.193A9.484 9.484 0 0 1 2.5 12C2.5 6.752 6.701 2.5 12 2.5c5.299 0 9.5 4.252 9.5 9.5z"/></svg>',
+            'link' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>'
         );
 
         return isset($icons[$platform]) ? $icons[$platform] : '';
@@ -1523,27 +1704,20 @@ class Twine {
                 <?php endforeach; ?>
             </div>
 
-            <?php
-            // Display social media icons if any are set
-            $has_social = false;
-            foreach ($social as $url) {
-                if (!empty($url)) {
-                    $has_social = true;
-                    break;
-                }
-            }
-
-            if ($has_social):
-            ?>
+            <?php if (!empty($social)): ?>
                 <div class="twine-social">
-                    <?php foreach ($social as $platform => $url): ?>
-                        <?php if (!empty($url)): ?>
-                            <a href="<?php echo esc_url($url); ?>"
+                    <?php foreach ($social as $item): ?>
+                        <?php if (!empty($item['url'])): ?>
+                            <a href="<?php echo esc_url($item['url']); ?>"
                                class="twine-social-icon"
                                target="_blank"
                                rel="noopener noreferrer"
-                               aria-label="<?php echo esc_attr(ucfirst($platform)); ?>">
-                                <?php echo $this->get_social_icon($platform); ?>
+                               aria-label="<?php echo esc_attr($item['name']); ?>">
+                                <?php if ($item['icon'] === 'custom' && !empty($item['custom_icon'])): ?>
+                                    <img src="<?php echo esc_url($item['custom_icon']); ?>" alt="<?php echo esc_attr($item['name']); ?>" class="twine-custom-icon">
+                                <?php else: ?>
+                                    <?php echo $this->get_social_icon($item['icon']); ?>
+                                <?php endif; ?>
                             </a>
                         <?php endif; ?>
                     <?php endforeach; ?>
@@ -1680,6 +1854,12 @@ class Twine {
             $social = array();
         }
 
+        // Determine page title
+        $html_title = $this->get_page_title();
+        if (empty($html_title)) {
+            $html_title = !empty($name) ? $name : 'Links';
+        }
+
         // Render preview page
         ?>
         <!DOCTYPE html>
@@ -1687,7 +1867,7 @@ class Twine {
         <head>
             <meta charset="<?php bloginfo('charset'); ?>">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Theme Preview</title>
+            <title><?php echo esc_html($html_title); ?></title>
             <link rel="stylesheet" href="<?php echo TWINE_PLUGIN_URL . 'assets/twine.css?v=' . TWINE_VERSION; ?>">
             <?php
             // Check for temporary theme preview
@@ -1710,7 +1890,25 @@ class Twine {
                     echo '<link rel="stylesheet" href="' . TWINE_PLUGIN_URL . 'themes/' . $theme_slug . '.css?v=' . TWINE_VERSION . '">';
                 }
             }
+
+            $ga_id = $this->get_ga_id();
+            if (empty($ga_id)) {
+                $ga_id = $this->get_monsterinsights_ga_id();
+            }
+            if (!empty($ga_id) && $mode === 'live'):
+                $page_slug = $this->get_slug();
             ?>
+            <script async src="https://www.googletagmanager.com/gtag/js?id=<?php echo esc_attr($ga_id); ?>"></script>
+            <script>
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '<?php echo esc_js($ga_id); ?>', {
+                    'page_title': '<?php echo esc_js($html_title); ?>',
+                    'page_path': '/<?php echo esc_js($page_slug); ?>'
+                });
+            </script>
+            <?php endif; ?>
             <style>
                 html { margin: 0; padding: 0; }
                 body { margin: 0; padding: 0; overflow-x: hidden; }
@@ -1746,24 +1944,16 @@ class Twine {
                         <a href="#" class="twine-link-button" onclick="return false;">Sample Link 3</a>
                     <?php endif; ?>
                 </div>
-                <?php
-                $has_social = false;
-                if ($mode === 'live') {
-                    $social_platforms = array('facebook', 'instagram', 'x', 'youtube', 'tiktok', 'linkedin', 'github', 'twitch');
-                    foreach ($social_platforms as $platform) {
-                        if (!empty($social[$platform])) {
-                            $has_social = true;
-                            break;
-                        }
-                    }
-                }
-                ?>
-                <?php if ($mode === 'live' && $has_social): ?>
+                <?php if ($mode === 'live' && !empty($social)): ?>
                     <div class="twine-social">
-                        <?php foreach ($social_platforms as $platform): ?>
-                            <?php if (!empty($social[$platform])): ?>
-                                <a href="<?php echo esc_url($social[$platform]); ?>" target="_blank" class="twine-social-icon">
-                                    <?php echo $this->get_social_icon($platform); ?>
+                        <?php foreach ($social as $item): ?>
+                            <?php if (!empty($item['url'])): ?>
+                                <a href="<?php echo esc_url($item['url']); ?>" target="_blank" class="twine-social-icon" aria-label="<?php echo esc_attr($item['name']); ?>">
+                                    <?php if ($item['icon'] === 'custom' && !empty($item['custom_icon'])): ?>
+                                        <img src="<?php echo esc_url($item['custom_icon']); ?>" alt="<?php echo esc_attr($item['name']); ?>" class="twine-custom-icon">
+                                    <?php else: ?>
+                                        <?php echo $this->get_social_icon($item['icon']); ?>
+                                    <?php endif; ?>
                                 </a>
                             <?php endif; ?>
                         <?php endforeach; ?>
@@ -1776,6 +1966,36 @@ class Twine {
                     </div>
                 <?php endif; ?>
             </div>
+            <?php if (!empty($ga_id) && $mode === 'live'): ?>
+            <script>
+                document.querySelectorAll('.twine-link-button').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        gtag('event', 'click', {
+                            'event_category': 'Links',
+                            'event_label': this.textContent.trim(),
+                            'transport_type': 'beacon'
+                        });
+                    });
+                });
+                document.querySelectorAll('.twine-social-icon').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        var platform = this.href.includes('facebook') ? 'Facebook' :
+                                       this.href.includes('instagram') ? 'Instagram' :
+                                       this.href.includes('twitter') || this.href.includes('x.com') ? 'X' :
+                                       this.href.includes('youtube') ? 'YouTube' :
+                                       this.href.includes('tiktok') ? 'TikTok' :
+                                       this.href.includes('linkedin') ? 'LinkedIn' :
+                                       this.href.includes('github') ? 'GitHub' :
+                                       this.href.includes('twitch') ? 'Twitch' : 'Social';
+                        gtag('event', 'click', {
+                            'event_category': 'Social',
+                            'event_label': platform,
+                            'transport_type': 'beacon'
+                        });
+                    });
+                });
+            </script>
+            <?php endif; ?>
         </body>
         </html>
         <?php

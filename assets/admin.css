@@ -290,6 +290,17 @@
     margin: 0;
 }
 
+/* Links Section */
+.twine-links-section {
+    margin-bottom: 0;
+}
+
+.twine-links-section .description {
+    margin-bottom: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
 /* Social Media Section */
 .twine-social-section {
     margin-bottom: 0;
@@ -329,6 +340,165 @@
 
 .twine-social-field input {
     width: 100%;
+}
+
+/* Dynamic Social Items */
+.twine-social-container {
+    margin-bottom: 20px;
+}
+
+.twine-social-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.twine-social-item:hover {
+    border-color: #999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.twine-social-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.twine-social-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.twine-social-icon-field {
+    flex: 0 0 140px;
+}
+
+.twine-social-custom-icon-field {
+    flex: 0 0 200px;
+}
+
+.twine-social-name-field {
+    flex: 0 0 160px;
+}
+
+.twine-social-url-field {
+    flex: 1;
+}
+
+.twine-social-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
+
+.twine-social-icon-select,
+.twine-social-name,
+.twine-social-url {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.twine-social-icon-select:focus,
+.twine-social-name:focus,
+.twine-social-url:focus {
+    border-color: #2271b1;
+    outline: none;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.twine-remove-social {
+    flex-shrink: 0;
+    padding: 6px 10px !important;
+    background: #dc3232 !important;
+    color: #fff !important;
+    border-color: #dc3232 !important;
+    min-height: auto !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center;
+    align-self: center;
+}
+
+.twine-remove-social:hover {
+    background: #a02222 !important;
+    border-color: #a02222 !important;
+}
+
+.twine-remove-social .dashicons {
+    color: #fff;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    margin: 0;
+}
+
+.twine-social-placeholder {
+    background: #f0f0f1;
+    border: 2px dashed #c3c4c7;
+    border-radius: 4px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+.twine-add-social-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding: 0 24px 0 10px;
+    min-height: 30px;
+    line-height: 2.15384615;
+    border: 1px solid #2271b1;
+    border-radius: 3px;
+    font-size: 13px;
+    background-color: #f6f7f7;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%232271b1%22%20d%3D%22M5%206l5%205%205-5%202%201-7%207-7-7%202-1z%22/%3E%3C/svg%3E');
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 16px 16px;
+    color: #2271b1;
+    font-weight: 400;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.twine-add-social-select:hover {
+    background-color: #f0f0f1;
+    border-color: #0a4b78;
+    color: #0a4b78;
+}
+
+.twine-add-social-select:focus {
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.twine-add-social-select optgroup {
+    background: #fff;
+    color: #1d2327;
+    font-weight: 600;
+}
+
+.twine-add-social-select option {
+    background: #fff;
+    color: #1d2327;
+    font-weight: 400;
 }
 
 /* Tab Navigation */
@@ -568,6 +738,38 @@
     .twine-remove-link {
         align-self: flex-start;
         margin-top: 4px;
+    }
+
+    .twine-social-item {
+        align-items: flex-start;
+    }
+
+    .twine-social-fields {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .twine-social-field {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .twine-social-icon-field,
+    .twine-social-custom-icon-field,
+    .twine-social-name-field,
+    .twine-social-url-field {
+        flex: 1;
+        width: 100%;
+    }
+
+    .twine-remove-social {
+        align-self: flex-start;
+        margin-top: 4px;
+    }
+
+    .twine-add-social-select {
+        width: 100%;
     }
 
     .twine-themes-grid {
