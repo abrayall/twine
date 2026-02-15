@@ -17,12 +17,28 @@ A WordPress plugin that creates a beautiful link collection page for your websit
 - Links display as styled buttons
 - Mobile-optimized responsive design
 
+### Header Icons
+- Configurable icon bar at the top of the page
+- 70+ built-in SVG icons across 12 categories:
+  - General, Commerce & Business, Media & Content
+  - Symbols & Actions, Places & Travel, Lifestyle
+  - Creative & Tech, Social Networks, Messaging
+  - Streaming & Music, Developer, Writing & Content
+  - Support & Donations, Contact & Other
+- Custom icon support via URL
+- Left, center, or right alignment per icon
+- Drag-and-drop reordering
+
+### Footer Links
+- Small text links at the bottom of the page (e.g. Privacy, Terms)
+- Add, edit, and reorder with drag-and-drop
+- Links separated by bullet separators
+- Optional - only displayed when links are added
+
 ### Social Media Integration
-- Pre-configured social media icons for:
-  - Facebook, Twitter/X, Instagram, LinkedIn
-  - TikTok, YouTube, GitHub, Discord
-  - Twitch, Snapchat, Pinterest, Medium
+- Dynamic social media icons with 30+ supported platforms
 - SVG icons for crisp display on all devices
+- Grouped display for duplicate platforms
 - Optional - only displayed when URLs are provided
 
 ### Theming System
@@ -48,9 +64,8 @@ A WordPress plugin that creates a beautiful link collection page for your websit
 
 ### Technical Features
 - Git-based versioning system
-- Automated build scripts (Unix/Windows)
+- Build system via [wordsmith](https://github.com/abrayall/wordsmith)
 - JSON-based data storage
-- REST API ready
 - Responsive admin interface with tabs
 - URL hash-based tab navigation
 
@@ -92,6 +107,25 @@ A WordPress plugin that creates a beautiful link collection page for your websit
 - Drag and drop links using the handle icon (☰) to reorder them
 - Works on both desktop and mobile/touch devices
 - Links display in the same order on your public page
+
+### Adding Header Icons
+
+1. Go to **Twine → Settings** in WordPress admin
+2. Click the **Header** tab
+3. Click **Add Header Icon** and select an icon from the dropdown
+4. Enter the destination URL for the icon
+5. Choose alignment (Left, Center, or Right)
+6. Drag to reorder icons as needed
+7. Click **Save Changes**
+
+### Adding Footer Links
+
+1. Go to **Twine → Settings** in WordPress admin
+2. Click the **Footer** tab
+3. Click **Add Footer Link**
+4. Enter the label text and destination URL
+5. Drag to reorder links as needed
+6. Click **Save Changes**
 
 ### Adding Social Media Links
 
@@ -145,6 +179,15 @@ Target these classes in your custom themes:
 /* Main container */
 .twine-container { }
 
+/* Header section */
+.twine-header { }
+.twine-header-group { }
+.twine-header-left { }
+.twine-header-center { }
+.twine-header-right { }
+.twine-header-icon { }
+.twine-header-icon svg { }
+
 /* Profile section */
 .twine-profile { }
 .twine-icon { }
@@ -163,6 +206,12 @@ Target these classes in your custom themes:
 .twine-social-icon { }
 .twine-social-icon:hover { }
 .twine-social-icon svg { }
+
+/* Footer section */
+.twine-footer { }
+.twine-footer-link { }
+.twine-footer-link:hover { }
+.twine-footer-separator { }
 ```
 
 ### Displaying Your Twine Page
@@ -222,12 +271,11 @@ Twine uses semantic versioning based on git tags:
 twine/
 ├── twine.php              # Main plugin file
 ├── version.properties     # Version info (auto-generated)
-├── build.sh              # Unix build script
-├── build.bat             # Windows build script
+├── plugin.properties      # Build configuration for wordsmith
 ├── assets/
 │   ├── admin.css         # Admin interface styles
 │   ├── admin.js          # Admin interface JS
-│   ├── frontend.css      # Public page styles
+│   ├── twine.css         # Public page styles
 │   ├── theme-editor.js   # Theme editor JS
 │   └── jquery.ui.touch-punch.min.js  # Touch support
 └── themes/               # Built-in theme files
@@ -239,14 +287,13 @@ twine/
 ### Admin Interface
 
 The admin interface uses tabbed navigation:
-- **Profile Tab**: Icon, name, description
+- **General Tab**: Profile icon, name, and description
+- **Theme Tab**: Theme selection (redirects to Themes page)
 - **Links Tab**: Add, edit, reorder, remove links
+- **Header Tab**: Add, edit, reorder header icons with alignment
+- **Footer Tab**: Add, edit, reorder footer text links
 - **Social Tab**: Social media URLs
-- **Themes Tab**: Theme selection (redirects to Themes page)
-
-### REST API
-
-Twine is designed to work with WordPress REST API and can be extended with custom endpoints.
+- **Advanced Tab**: Page slug, page title, and other settings
 
 ## Requirements
 
@@ -271,6 +318,11 @@ Twine is mobile-first and fully responsive:
 
 ## Changelog
 
+### Version 0.1.7 (2026-02-15)
+- Header icon bar with 70+ icons and left/center/right alignment
+- Footer text links section
+- Widen align dropdown for full text visibility
+
 ### Version 0.1.0 (2025-11-04)
 - Initial release
 - Profile management with icon upload
@@ -278,11 +330,10 @@ Twine is mobile-first and fully responsive:
 - 25+ built-in themes
 - Custom theme support
 - Theme editor with syntax highlighting
-- Social media integration
+- Social media integration with 30+ platforms
 - Public `/twine` endpoint
 - Mobile-optimized responsive design
 - Git-based versioning system
-- Build scripts for automated releases
 
 ## License
 
