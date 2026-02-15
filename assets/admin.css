@@ -190,6 +190,67 @@
     flex-shrink: 0;
 }
 
+.twine-link-image-field {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.twine-link-image-wrapper {
+    width: 36px;
+    height: 36px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f6f7f7;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+}
+
+.twine-link-image-preview {
+    border-radius: 3px;
+}
+
+.twine-link-image-wrapper:hover {
+    border-color: #2271b1;
+}
+
+.twine-link-image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.twine-link-image-placeholder {
+    color: #c3c4c7;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.twine-link-image-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    background: #dc3232;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 14px;
+    text-align: center;
+    cursor: pointer;
+    display: none;
+}
+
+.twine-link-image-wrapper:hover .twine-link-image-remove {
+    display: block;
+}
+
 .twine-link-text,
 .twine-link-url {
     width: 100%;
@@ -501,6 +562,226 @@
     font-weight: 400;
 }
 
+/* Header Items */
+.twine-header-container {
+    margin-bottom: 20px;
+}
+
+.twine-header-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.twine-header-item:hover {
+    border-color: #999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.twine-header-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.twine-header-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.twine-header-icon-field {
+    flex: 0 0 140px;
+}
+
+.twine-header-custom-icon-field {
+    flex: 0 0 200px;
+}
+
+.twine-header-url-field {
+    flex: 1;
+}
+
+.twine-header-align-field {
+    flex: 0 0 130px;
+}
+
+.twine-header-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
+
+.twine-header-icon-select,
+.twine-header-custom-icon,
+.twine-header-url,
+.twine-header-align-select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.twine-header-icon-select:focus,
+.twine-header-custom-icon:focus,
+.twine-header-url:focus,
+.twine-header-align-select:focus {
+    border-color: #2271b1;
+    outline: none;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.twine-remove-header {
+    flex-shrink: 0;
+    padding: 6px 10px !important;
+    background: #dc3232 !important;
+    color: #fff !important;
+    border-color: #dc3232 !important;
+    min-height: auto !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center;
+    align-self: center;
+}
+
+.twine-remove-header:hover {
+    background: #a02222 !important;
+    border-color: #a02222 !important;
+}
+
+.twine-remove-header .dashicons {
+    color: #fff;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    margin: 0;
+}
+
+.twine-header-placeholder {
+    background: #f0f0f1;
+    border: 2px dashed #c3c4c7;
+    border-radius: 4px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+/* Footer Items */
+.twine-footer-container {
+    margin-bottom: 20px;
+}
+
+.twine-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    transition: all 0.2s ease;
+}
+
+.twine-footer-item:hover {
+    border-color: #999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.twine-footer-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.twine-footer-field {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.twine-footer-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.twine-footer-text,
+.twine-footer-url {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.twine-footer-text:focus,
+.twine-footer-url:focus {
+    border-color: #2271b1;
+    outline: none;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.twine-remove-footer {
+    flex-shrink: 0;
+    padding: 6px 10px !important;
+    background: #dc3232 !important;
+    color: #fff !important;
+    border-color: #dc3232 !important;
+    min-height: auto !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center;
+    align-self: center;
+}
+
+.twine-remove-footer:hover {
+    background: #a02222 !important;
+    border-color: #a02222 !important;
+}
+
+.twine-remove-footer .dashicons {
+    color: #fff;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    margin: 0;
+}
+
+.twine-footer-placeholder {
+    background: #f0f0f1;
+    border: 2px dashed #c3c4c7;
+    border-radius: 4px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+#twine-add-footer {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#twine-add-footer .dashicons {
+    margin: 0;
+}
+
 /* Tab Navigation */
 .nav-tab-wrapper {
     margin-bottom: 20px;
@@ -770,6 +1051,54 @@
 
     .twine-add-social-select {
         width: 100%;
+    }
+
+    .twine-header-item {
+        align-items: flex-start;
+    }
+
+    .twine-header-fields {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .twine-header-field {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .twine-header-icon-field,
+    .twine-header-custom-icon-field,
+    .twine-header-url-field,
+    .twine-header-align-field {
+        flex: 1;
+        width: 100%;
+    }
+
+    .twine-remove-header {
+        align-self: flex-start;
+        margin-top: 4px;
+    }
+
+    .twine-footer-item {
+        align-items: flex-start;
+    }
+
+    .twine-footer-fields {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .twine-footer-field {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .twine-remove-footer {
+        align-self: flex-start;
+        margin-top: 4px;
     }
 
     .twine-themes-grid {

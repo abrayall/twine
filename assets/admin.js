@@ -161,6 +161,12 @@ jQuery(document).ready(function($) {
             <div class="twine-link-item">
                 <span class="twine-drag-handle dashicons dashicons-menu"></span>
                 <div class="twine-link-fields">
+                    <div class="twine-link-image-field">
+                        <div class="twine-link-image-wrapper twine-link-image-picker">
+                            <span class="twine-link-image-placeholder dashicons dashicons-format-image"></span>
+                        </div>
+                        <input type="hidden" name="link_image[]" value="" class="twine-link-image-url">
+                    </div>
                     <div class="twine-link-field">
                         <label>Label</label>
                         <input type="text"
@@ -199,6 +205,42 @@ jQuery(document).ready(function($) {
                 $(this).remove();
             });
         }
+    });
+
+    // Link image upload - click thumbnail to open media picker
+    $(document).on('click', '.twine-link-image-picker', function(e) {
+        if ($(e.target).hasClass('twine-link-image-remove')) return;
+        e.preventDefault();
+        var $wrapper = $(this);
+        var $field = $wrapper.closest('.twine-link-image-field');
+
+        var uploader = wp.media({
+            title: 'Choose Link Image',
+            button: { text: 'Select Image' },
+            multiple: false,
+            library: { type: 'image' }
+        });
+
+        uploader.on('select', function() {
+            var attachment = uploader.state().get('selection').first().toJSON();
+            var imageUrl = attachment.url;
+            if (attachment.sizes && attachment.sizes.thumbnail) {
+                imageUrl = attachment.sizes.thumbnail.url;
+            }
+            $field.find('.twine-link-image-url').val(attachment.url);
+            $wrapper.html('<img src="' + imageUrl + '" class="twine-link-image-preview"><span class="twine-link-image-remove">&times;</span>');
+        });
+
+        uploader.open();
+    });
+
+    // Remove link image
+    $(document).on('click', '.twine-link-image-remove', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $field = $(this).closest('.twine-link-image-field');
+        $field.find('.twine-link-image-url').val('');
+        $field.find('.twine-link-image-wrapper').html('<span class="twine-link-image-placeholder dashicons dashicons-format-image"></span>');
     });
 
     // Social presets with default names and URL placeholders
@@ -396,6 +438,274 @@ jQuery(document).ready(function($) {
         } else {
             $customField.hide();
             $customField.find('input').val('');
+        }
+    });
+
+    // Make header items sortable
+    $('#twine-header-container').sortable({
+        handle: '.twine-drag-handle',
+        placeholder: 'twine-header-placeholder',
+        cursor: 'move',
+        opacity: 0.8,
+        tolerance: 'pointer'
+    });
+
+    // Generate header item HTML
+    function getHeaderItemHtml(icon, url) {
+        function sel(val) { return icon === val ? ' selected' : ''; }
+        return `
+            <div class="twine-header-item">
+                <span class="twine-drag-handle dashicons dashicons-menu"></span>
+                <div class="twine-header-fields">
+                    <div class="twine-header-field twine-header-icon-field">
+                        <label>Icon</label>
+                        <select name="header_icon[]" class="twine-header-icon-select">
+                            <optgroup label="General">
+                                <option value="home"${sel('home')}>Home</option>
+                                <option value="search"${sel('search')}>Search</option>
+                                <option value="menu"${sel('menu')}>Menu</option>
+                                <option value="grid"${sel('grid')}>Grid</option>
+                                <option value="settings"${sel('settings')}>Settings</option>
+                                <option value="notification"${sel('notification')}>Notification</option>
+                                <option value="info"${sel('info')}>Info</option>
+                                <option value="help"${sel('help')}>Help</option>
+                                <option value="user"${sel('user')}>User</option>
+                                <option value="people"${sel('people')}>People</option>
+                                <option value="chat"${sel('chat')}>Chat</option>
+                                <option value="share"${sel('share')}>Share</option>
+                            </optgroup>
+                            <optgroup label="Commerce & Business">
+                                <option value="shop"${sel('shop')}>Shop</option>
+                                <option value="cart"${sel('cart')}>Cart</option>
+                                <option value="dollar"${sel('dollar')}>Dollar</option>
+                                <option value="bitcoin"${sel('bitcoin')}>Bitcoin</option>
+                                <option value="ticket"${sel('ticket')}>Ticket</option>
+                                <option value="gift"${sel('gift')}>Gift</option>
+                                <option value="work"${sel('work')}>Work</option>
+                            </optgroup>
+                            <optgroup label="Media & Content">
+                                <option value="camera"${sel('camera')}>Camera</option>
+                                <option value="video"${sel('video')}>Video</option>
+                                <option value="music"${sel('music')}>Music</option>
+                                <option value="mic"${sel('mic')}>Microphone</option>
+                                <option value="podcast"${sel('podcast')}>Podcast</option>
+                                <option value="book"${sel('book')}>Book</option>
+                                <option value="document"${sel('document')}>Document</option>
+                                <option value="rss"${sel('rss')}>RSS</option>
+                            </optgroup>
+                            <optgroup label="Symbols & Actions">
+                                <option value="star"${sel('star')}>Star</option>
+                                <option value="heart"${sel('heart')}>Heart</option>
+                                <option value="bookmark"${sel('bookmark')}>Bookmark</option>
+                                <option value="fire"${sel('fire')}>Fire</option>
+                                <option value="flash"${sel('flash')}>Flash</option>
+                                <option value="crown"${sel('crown')}>Crown</option>
+                                <option value="trophy"${sel('trophy')}>Trophy</option>
+                                <option value="verified"${sel('verified')}>Verified</option>
+                                <option value="lock"${sel('lock')}>Lock</option>
+                                <option value="download"${sel('download')}>Download</option>
+                            </optgroup>
+                            <optgroup label="Places & Travel">
+                                <option value="location"${sel('location')}>Location</option>
+                                <option value="map"${sel('map')}>Map</option>
+                                <option value="globe"${sel('globe')}>Globe</option>
+                                <option value="airplane"${sel('airplane')}>Airplane</option>
+                                <option value="car"${sel('car')}>Car</option>
+                            </optgroup>
+                            <optgroup label="Lifestyle">
+                                <option value="restaurant"${sel('restaurant')}>Restaurant</option>
+                                <option value="coffee"${sel('coffee')}>Coffee</option>
+                                <option value="fitness"${sel('fitness')}>Fitness</option>
+                                <option value="pet"${sel('pet')}>Pet</option>
+                                <option value="calendar"${sel('calendar')}>Calendar</option>
+                                <option value="sun"${sel('sun')}>Sun</option>
+                                <option value="moon"${sel('moon')}>Moon</option>
+                                <option value="cloud"${sel('cloud')}>Cloud</option>
+                            </optgroup>
+                            <optgroup label="Creative & Tech">
+                                <option value="palette"${sel('palette')}>Palette</option>
+                                <option value="brush"${sel('brush')}>Brush</option>
+                                <option value="code"${sel('code')}>Code</option>
+                                <option value="terminal"${sel('terminal')}>Terminal</option>
+                                <option value="school"${sel('school')}>School</option>
+                            </optgroup>
+                            <optgroup label="Social Networks">
+                                <option value="facebook"${sel('facebook')}>Facebook</option>
+                                <option value="google"${sel('google')}>Google</option>
+                                <option value="instagram"${sel('instagram')}>Instagram</option>
+                                <option value="x"${sel('x')}>X</option>
+                                <option value="twitter"${sel('twitter')}>Twitter</option>
+                                <option value="tiktok"${sel('tiktok')}>TikTok</option>
+                                <option value="youtube"${sel('youtube')}>YouTube</option>
+                                <option value="linkedin"${sel('linkedin')}>LinkedIn</option>
+                                <option value="snapchat"${sel('snapchat')}>Snapchat</option>
+                                <option value="pinterest"${sel('pinterest')}>Pinterest</option>
+                                <option value="reddit"${sel('reddit')}>Reddit</option>
+                                <option value="threads"${sel('threads')}>Threads</option>
+                                <option value="bluesky"${sel('bluesky')}>Bluesky</option>
+                                <option value="mastodon"${sel('mastodon')}>Mastodon</option>
+                            </optgroup>
+                            <optgroup label="Messaging">
+                                <option value="discord"${sel('discord')}>Discord</option>
+                                <option value="telegram"${sel('telegram')}>Telegram</option>
+                                <option value="whatsapp"${sel('whatsapp')}>WhatsApp</option>
+                            </optgroup>
+                            <optgroup label="Streaming & Music">
+                                <option value="twitch"${sel('twitch')}>Twitch</option>
+                                <option value="spotify"${sel('spotify')}>Spotify</option>
+                                <option value="apple-music"${sel('apple-music')}>Apple Music</option>
+                                <option value="soundcloud"${sel('soundcloud')}>SoundCloud</option>
+                                <option value="vimeo"${sel('vimeo')}>Vimeo</option>
+                            </optgroup>
+                            <optgroup label="Developer">
+                                <option value="github"${sel('github')}>GitHub</option>
+                                <option value="stackoverflow"${sel('stackoverflow')}>Stack Overflow</option>
+                                <option value="dribbble"${sel('dribbble')}>Dribbble</option>
+                                <option value="behance"${sel('behance')}>Behance</option>
+                            </optgroup>
+                            <optgroup label="Writing & Content">
+                                <option value="medium"${sel('medium')}>Medium</option>
+                                <option value="substack"${sel('substack')}>Substack</option>
+                            </optgroup>
+                            <optgroup label="Support & Donations">
+                                <option value="patreon"${sel('patreon')}>Patreon</option>
+                                <option value="ko-fi"${sel('ko-fi')}>Ko-fi</option>
+                                <option value="buymeacoffee"${sel('buymeacoffee')}>Buy Me a Coffee</option>
+                            </optgroup>
+                            <optgroup label="Contact & Other">
+                                <option value="email"${sel('email')}>Email</option>
+                                <option value="phone"${sel('phone')}>Phone</option>
+                                <option value="website"${sel('website')}>Website</option>
+                                <option value="link"${sel('link')}>Link</option>
+                                <option value="custom"${sel('custom')}>Custom Icon...</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="twine-header-field twine-header-custom-icon-field" style="${icon === 'custom' ? '' : 'display: none;'}">
+                        <label>Icon URL</label>
+                        <input type="url"
+                               name="header_custom_icon[]"
+                               value=""
+                               placeholder="https://example.com/icon.png"
+                               class="twine-header-custom-icon">
+                    </div>
+                    <div class="twine-header-field twine-header-url-field">
+                        <label>URL</label>
+                        <input type="url"
+                               name="header_url[]"
+                               value="${url}"
+                               placeholder="https://example.com"
+                               class="twine-header-url"
+                               required>
+                    </div>
+                    <div class="twine-header-field twine-header-align-field">
+                        <label>Align</label>
+                        <select name="header_align[]" class="twine-header-align-select">
+                            <option value="left">Left</option>
+                            <option value="center" selected>Center</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="button twine-remove-header">
+                    <span class="dashicons dashicons-trash"></span>
+                </button>
+            </div>
+        `;
+    }
+
+    // Add new header item from dropdown
+    $('#twine-add-header').on('change', function() {
+        var preset = $(this).val();
+        if (!preset) return;
+
+        var icon = preset === 'custom' ? 'website' : preset;
+        var url = socialPresets[preset] ? socialPresets[preset].url : '';
+
+        var headerHtml = getHeaderItemHtml(icon, url);
+        $('#twine-header-container').append(headerHtml);
+
+        if (preset === 'custom') {
+            $('#twine-header-container .twine-header-item:last-child .twine-header-custom-icon').focus();
+        } else {
+            $('#twine-header-container .twine-header-item:last-child .twine-header-url').focus();
+        }
+
+        $(this).val('');
+    });
+
+    // Remove header item
+    $(document).on('click', '.twine-remove-header', function() {
+        if (confirm('Are you sure you want to remove this header link?')) {
+            $(this).closest('.twine-header-item').fadeOut(300, function() {
+                $(this).remove();
+            });
+        }
+    });
+
+    // Show/hide custom icon URL field when header icon dropdown changes
+    $(document).on('change', '.twine-header-icon-select', function() {
+        var $item = $(this).closest('.twine-header-item');
+        var $customField = $item.find('.twine-header-custom-icon-field');
+        if ($(this).val() === 'custom') {
+            $customField.show();
+            $customField.find('input').focus();
+        } else {
+            $customField.hide();
+            $customField.find('input').val('');
+        }
+    });
+
+    // Make footer items sortable
+    $('#twine-footer-container').sortable({
+        handle: '.twine-drag-handle',
+        placeholder: 'twine-footer-placeholder',
+        cursor: 'move',
+        opacity: 0.8,
+        tolerance: 'pointer'
+    });
+
+    // Add new footer link
+    $('#twine-add-footer').on('click', function() {
+        var footerHtml = `
+            <div class="twine-footer-item">
+                <span class="twine-drag-handle dashicons dashicons-menu"></span>
+                <div class="twine-footer-fields">
+                    <div class="twine-footer-field twine-footer-text-field">
+                        <label>Label</label>
+                        <input type="text"
+                               name="footer_text[]"
+                               value=""
+                               placeholder="Link Text"
+                               class="twine-footer-text"
+                               required>
+                    </div>
+                    <div class="twine-footer-field twine-footer-url-field">
+                        <label>URL</label>
+                        <input type="url"
+                               name="footer_url[]"
+                               value=""
+                               placeholder="https://example.com"
+                               class="twine-footer-url"
+                               required>
+                    </div>
+                </div>
+                <button type="button" class="button twine-remove-footer">
+                    <span class="dashicons dashicons-trash"></span>
+                </button>
+            </div>
+        `;
+
+        $('#twine-footer-container').append(footerHtml);
+        $('#twine-footer-container .twine-footer-item:last-child .twine-footer-text').focus();
+    });
+
+    // Remove footer link
+    $(document).on('click', '.twine-remove-footer', function() {
+        if (confirm('Are you sure you want to remove this footer link?')) {
+            $(this).closest('.twine-footer-item').fadeOut(300, function() {
+                $(this).remove();
+            });
         }
     });
 
