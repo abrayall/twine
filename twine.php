@@ -65,6 +65,7 @@ class Twine {
         add_action('wp_ajax_twine_save_temp_theme', array($this, 'ajax_save_temp_theme'));
         add_action('init', array($this, 'add_rewrite_rules'));
         add_action('template_redirect', array($this, 'handle_twine_page'));
+        add_action('template_redirect', array($this, 'handle_twine_icon'));
         add_action('template_redirect', array($this, 'handle_theme_preview'));
         add_action('admin_init', array($this, 'handle_theme_download'));
 
@@ -282,7 +283,21 @@ class Twine {
      */
     public function get_header_links() {
         $data = $this->get_data();
-        return isset($data['header']) ? $data['header'] : array();
+        $header = isset($data['header']) ? $data['header'] : array();
+
+        $has_share = false;
+        foreach ($header as $item) {
+            if (isset($item['url']) && $item['url'] === 'share') {
+                $has_share = true;
+                break;
+            }
+        }
+
+        if (!$has_share) {
+            $header[] = array('icon' => 'share', 'url' => 'share', 'align' => 'right');
+        }
+
+        return $header;
     }
 
     /**
@@ -411,6 +426,8 @@ class Twine {
             wp_die('Security check failed');
         }
 
+        $_POST = wp_unslash($_POST);
+
         // Handle theme file upload (do this first, before saving other settings)
         // Theme upload form doesn't contain other settings, so we handle it separately
         if (isset($_FILES['twine_theme_upload']) && $_FILES['twine_theme_upload']['error'] === UPLOAD_ERR_OK) {
@@ -520,7 +537,8 @@ class Twine {
             $h_aligns = isset($_POST['header_align']) ? $_POST['header_align'] : array();
             $h_count = count($h_icons);
             for ($i = 0; $i < $h_count; $i++) {
-                $url = isset($h_urls[$i]) ? esc_url_raw($h_urls[$i]) : '';
+                $raw_url = isset($h_urls[$i]) ? sanitize_text_field($h_urls[$i]) : '';
+                $url = ($raw_url === 'share') ? 'share' : esc_url_raw($raw_url);
                 if (!empty($url)) {
                     $item = array(
                         'icon' => isset($h_icons[$i]) ? sanitize_text_field($h_icons[$i]) : '',
@@ -593,6 +611,11 @@ class Twine {
 
         // Ensure directory exists
         $this->ensure_data_directory();
+
+        // Clear cached touch icons
+        foreach (glob(TWINE_DATA_DIR . '/icon-*.png') as $cached) {
+            @unlink($cached);
+        }
 
         // Write to JSON file
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
@@ -754,6 +777,7 @@ class Twine {
                             <div class="twine-header-container" id="twine-header-container">
                                 <?php if (!empty($header_links)): ?>
                                     <?php foreach ($header_links as $index => $item): ?>
+                                        <?php $is_share = (isset($item['url']) && $item['url'] === 'share'); ?>
                                         <div class="twine-header-item">
                                             <span class="twine-drag-handle dashicons dashicons-menu"></span>
                                             <div class="twine-header-fields">
@@ -891,12 +915,12 @@ class Twine {
                                                 </div>
                                                 <div class="twine-header-field twine-header-url-field">
                                                     <label>URL</label>
-                                                    <input type="url"
+                                                    <input type="<?php echo $is_share ? 'text' : 'url'; ?>"
                                                            name="header_url[]"
-                                                           value="<?php echo esc_url($item['url']); ?>"
+                                                           value="<?php echo $is_share ? 'share' : esc_url($item['url']); ?>"
                                                            placeholder="https://example.com"
                                                            class="twine-header-url"
-                                                           required>
+                                                           <?php echo $is_share ? 'readonly' : 'required'; ?>>
                                                 </div>
                                                 <div class="twine-header-field twine-header-align-field">
                                                     <label>Align</label>
@@ -907,7 +931,7 @@ class Twine {
                                                     </select>
                                                 </div>
                                             </div>
-                                            <button type="button" class="button twine-remove-header">
+                                            <button type="button" class="button twine-remove-header" <?php echo $is_share ? 'disabled' : ''; ?>>
                                                 <span class="dashicons dashicons-trash"></span>
                                             </button>
                                         </div>
@@ -1897,6 +1921,8 @@ class Twine {
             wp_die('Security check failed');
         }
 
+        $_POST = wp_unslash($_POST);
+
         // Get form values
         $theme_name = isset($_POST['theme_name']) ? sanitize_text_field($_POST['theme_name']) : '';
         if (empty($theme_name)) {
@@ -2068,6 +2094,11 @@ class Twine {
         } else {
             $icon_html = $this->get_social_icon($item['icon']);
         }
+
+        if (isset($item['url']) && $item['url'] === 'share') {
+            return '<a href="#" class="twine-header-icon twine-header-share-btn" role="button" aria-label="Share">' . $icon_html . '</a>';
+        }
+
         return '<a href="' . esc_url($item['url']) . '" class="twine-header-icon" target="_blank" rel="noopener noreferrer">' . $icon_html . '</a>';
     }
 
@@ -2237,7 +2268,7 @@ class Twine {
                         <h1 class="twine-name"><?php echo esc_html($name); ?></h1>
                     <?php endif; ?>
                     <?php if ($description): ?>
-                        <p class="twine-description"><?php echo esc_html($description); ?></p>
+                        <p class="twine-description"><?php echo nl2br(esc_html(rtrim($description, "\n\r"))); ?></p>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -2439,6 +2470,70 @@ class Twine {
     }
 
     /**
+     * Handle touch icon requests - serves profile icon resized to 180x180 PNG
+     */
+    public function handle_twine_icon() {
+        if (!isset($_GET['twine_icon'])) {
+            return;
+        }
+
+        $icon_url = $this->get_icon();
+        if (empty($icon_url)) {
+            status_header(404);
+            exit;
+        }
+
+        $cache_dir = TWINE_DATA_DIR;
+        $url_hash = md5($icon_url);
+        $cache_file = $cache_dir . '/icon-' . $url_hash . '.png';
+
+        if (file_exists($cache_file)) {
+            header('Content-Type: image/png');
+            header('Cache-Control: public, max-age=86400');
+            readfile($cache_file);
+            exit;
+        }
+
+        $attachment_id = attachment_url_to_postid($icon_url);
+        if ($attachment_id) {
+            $file_path = get_attached_file($attachment_id);
+        } else {
+            $tmp = download_url($icon_url, 15);
+            if (is_wp_error($tmp)) {
+                status_header(404);
+                exit;
+            }
+            $file_path = $tmp;
+        }
+
+        $editor = wp_get_image_editor($file_path);
+        if (is_wp_error($editor)) {
+            if (!$attachment_id && isset($tmp)) {
+                @unlink($tmp);
+            }
+            status_header(500);
+            exit;
+        }
+
+        $editor->resize(180, 180, true);
+        $saved = $editor->save($cache_file, 'image/png');
+
+        if (!$attachment_id && isset($tmp)) {
+            @unlink($tmp);
+        }
+
+        if (is_wp_error($saved)) {
+            status_header(500);
+            exit;
+        }
+
+        header('Content-Type: image/png');
+        header('Cache-Control: public, max-age=86400');
+        readfile($cache_file);
+        exit;
+    }
+
+    /**
      * Handle theme preview mode
      */
     public function handle_theme_preview() {
@@ -2491,6 +2586,30 @@ class Twine {
             <meta charset="<?php bloginfo('charset'); ?>">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title><?php echo esc_html($html_title); ?></title>
+            <?php if (!empty($icon)): ?>
+            <?php $touch_icon_url = home_url('?twine_icon=1'); ?>
+            <link rel="icon" type="image/png" href="<?php echo esc_url($touch_icon_url); ?>">
+            <link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url($touch_icon_url); ?>">
+            <?php endif; ?>
+            <?php if ($mode === 'live'): ?>
+            <meta property="og:title" content="<?php echo esc_attr(!empty($name) ? $name : $html_title); ?>">
+            <?php if (!empty($description)): ?>
+            <meta property="og:description" content="<?php echo esc_attr($description); ?>">
+            <?php endif; ?>
+            <meta property="og:url" content="<?php echo esc_url($this->get_public_url()); ?>">
+            <meta property="og:type" content="website">
+            <?php if (!empty($icon)): ?>
+            <meta property="og:image" content="<?php echo esc_url($icon); ?>">
+            <?php endif; ?>
+            <meta name="twitter:card" content="summary">
+            <meta name="twitter:title" content="<?php echo esc_attr(!empty($name) ? $name : $html_title); ?>">
+            <?php if (!empty($description)): ?>
+            <meta name="twitter:description" content="<?php echo esc_attr($description); ?>">
+            <?php endif; ?>
+            <?php if (!empty($icon)): ?>
+            <meta name="twitter:image" content="<?php echo esc_url($icon); ?>">
+            <?php endif; ?>
+            <?php endif; ?>
             <link rel="stylesheet" href="<?php echo TWINE_PLUGIN_URL . 'assets/twine.css?v=' . TWINE_VERSION; ?>">
             <?php
             // Check for temporary theme preview
@@ -2554,7 +2673,7 @@ class Twine {
                         <h1 class="twine-name"><?php echo esc_html($name); ?></h1>
                     <?php endif; ?>
                     <?php if ($description): ?>
-                        <p class="twine-description"><?php echo esc_html($description); ?></p>
+                        <p class="twine-description"><?php echo nl2br(esc_html(rtrim($description, "\n\r"))); ?></p>
                     <?php endif; ?>
                 </div>
                 <div class="twine-links">
@@ -2680,6 +2799,51 @@ class Twine {
                         });
                     });
                 });
+            </script>
+            <?php endif; ?>
+            <?php if ($mode === 'live'): ?>
+            <script>
+                (function() {
+                    var btns = document.querySelectorAll('.twine-header-share-btn');
+                    if (!btns.length) return;
+                    var shareTitle = document.title;
+                    var shareUrl = window.location.href;
+
+                    btns.forEach(function(btn) {
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            if (navigator.share) {
+                                navigator.share({ title: shareTitle, url: shareUrl }).catch(function() {});
+                            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(shareUrl).then(function() {
+                                    showToast();
+                                }).catch(function() {
+                                    fallbackCopy();
+                                });
+                            } else {
+                                fallbackCopy();
+                            }
+                        });
+                    });
+
+                    function fallbackCopy() {
+                        prompt('Copy this link:', shareUrl);
+                    }
+
+                    function showToast() {
+                        var existing = document.querySelector('.twine-share-toast');
+                        if (existing) existing.remove();
+                        var toast = document.createElement('div');
+                        toast.className = 'twine-share-toast';
+                        toast.textContent = 'Link copied!';
+                        document.body.appendChild(toast);
+                        setTimeout(function() { toast.classList.add('twine-share-toast-visible'); }, 10);
+                        setTimeout(function() {
+                            toast.classList.remove('twine-share-toast-visible');
+                            setTimeout(function() { toast.remove(); }, 300);
+                        }, 2000);
+                    }
+                })();
             </script>
             <?php endif; ?>
         </body>
