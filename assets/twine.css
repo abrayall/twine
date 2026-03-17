@@ -98,6 +98,66 @@
     padding-right: 48px;
 }
 
+/* Link wrapper for share button */
+.twine-link-wrapper {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.twine-link-wrapper .twine-link-button {
+    flex: 1;
+    min-width: 0;
+}
+
+.twine-link-wrapper.has-share .twine-link-button {
+    padding-right: 44px;
+}
+
+.twine-share-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+    padding: 0;
+    z-index: 1;
+    border-radius: 0 12px 12px 0;
+}
+
+@media (hover: hover) {
+    .twine-share-btn:hover {
+        opacity: 0.8;
+    }
+}
+
+.twine-share-btn:active {
+    opacity: 1;
+}
+
+@media (hover: hover) {
+    .twine-link-wrapper:hover .twine-link-button {
+        background: #f6f6f6;
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.twine-link-wrapper:active .twine-link-button {
+    background: #f6f6f6;
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 @media (hover: hover) {
     .twine-link-button:hover {
         background: #f6f6f6;
@@ -286,6 +346,29 @@
     user-select: none;
 }
 
+/* Share Toast Notification */
+.twine-share-toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #333;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.twine-share-toast-visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 /* Empty state */
 .twine-empty {
     text-align: center;
@@ -358,6 +441,14 @@
         padding-right: 40px;
     }
 
+    .twine-link-wrapper.has-share .twine-link-button {
+        padding-right: 40px;
+    }
+
+    .twine-share-btn {
+        width: 40px;
+    }
+
     .twine-footer {
         padding: 20px 16px 28px;
     }
@@ -382,5 +473,13 @@
 
     .twine-link-button.has-image .twine-link-text {
         padding-right: 36px;
+    }
+
+    .twine-link-wrapper.has-share .twine-link-button {
+        padding-right: 36px;
+    }
+
+    .twine-share-btn {
+        width: 36px;
     }
 }

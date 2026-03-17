@@ -493,6 +493,8 @@ class Twine {
                     if (!empty($_POST['link_image'][$index])) {
                         $link_data['image'] = esc_url_raw($_POST['link_image'][$index]);
                     }
+                    $share_values = isset($_POST['link_share']) ? $_POST['link_share'] : array();
+                    $link_data['share'] = !isset($share_values[$index]) || $share_values[$index] === '1';
                     $links[] = $link_data;
                 }
             }
@@ -1104,6 +1106,15 @@ class Twine {
                                                        placeholder="https://example.com"
                                                        class="twine-link-url"
                                                        required>
+                                            </div>
+                                            <div class="twine-link-share-toggle">
+                                                <label class="twine-toggle-label" title="Show share button">
+                                                    <input type="checkbox"
+                                                           class="twine-link-share-checkbox"
+                                                           <?php checked(!isset($link['share']) || $link['share']); ?>>
+                                                    <span class="dashicons dashicons-share"></span>
+                                                </label>
+                                                <input type="hidden" name="link_share[]" value="<?php echo (!isset($link['share']) || $link['share']) ? '1' : '0'; ?>" class="twine-link-share-value">
                                             </div>
                                         </div>
                                         <button type="button" class="button twine-remove-link">
@@ -2154,7 +2165,7 @@ class Twine {
             'stackoverflow' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15.725 0l-1.72 1.277 6.39 8.588 1.72-1.277L15.725 0zm-3.94 3.418l-1.369 1.644 8.225 6.85 1.369-1.644-8.225-6.85zm-3.15 4.465l-.905 1.94 9.702 4.517.904-1.94-9.701-4.517zm-1.85 4.86l-.44 2.093 10.473 2.201.44-2.092-10.473-2.203zM1.89 15.47V24h19.19v-8.53h-2.133v6.397H4.021v-6.396H1.89zm4.265 2.133v2.13h10.66v-2.13H6.154Z"/></svg>',
             'email' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>',
             'phone' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>',
-            'website' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm9.5 12c0 1.657-.425 3.214-1.173 4.576l-1.025-.396c-.494-.191-.842-.586-1.025-1.071l-.399-1.057c-.084-.224-.136-.458-.157-.696l-.073-.848a2.118 2.118 0 0 0-.589-1.318l-1.05-1.05a2.113 2.113 0 0 0-1.497-.62h-.9a2.118 2.118 0 0 0-1.5.621l-.9.9c-.4.4-.621.943-.621 1.5v1.2c0 .233.038.465.114.686l.457 1.371c.115.345.173.708.173 1.074v.729a2.117 2.117 0 0 0 1.06 1.833l.64.366c.212.121.451.184.693.184h1.5c.829 0 1.5-.671 1.5-1.5v-1.2c0-.398.158-.779.439-1.061l.9-.9a2.113 2.113 0 0 1 1.497-.62h.364c.133 0 .266.013.396.038a9.511 9.511 0 0 1-8.139 6.673v-.711c0-.828-.672-1.5-1.5-1.5h-1.2a2.113 2.113 0 0 0-2.121 2.121c0 .233.038.465.114.686l.057.171c.115.345.173.708.173 1.074v.193A9.484 9.484 0 0 1 2.5 12C2.5 6.752 6.701 2.5 12 2.5c5.299 0 9.5 4.252 9.5 9.5z"/></svg>',
+            'website' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM8.88595 4.08853C6.91281 4.8658 5.3005 6.35989 4.36981 8.25H7.34901C7.57433 7.0928 7.9022 6.04086 8.31329 5.14614C8.48347 4.77573 8.67455 4.41956 8.88595 4.08853ZM3.5 12C3.5 11.2211 3.60477 10.4666 3.80098 9.75H7.12189C7.04193 10.4748 7 11.2282 7 12C7 12.7718 7.04193 13.5252 7.12189 14.25H3.80098C3.60477 13.5334 3.5 12.7789 3.5 12ZM4.36981 15.75C5.3005 17.6401 6.91281 19.1342 8.88595 19.9115C8.67456 19.5804 8.48347 19.2243 8.31329 18.8539C7.9022 17.9591 7.57433 16.9072 7.34901 15.75H4.36981ZM8.87998 15.75C9.08053 16.6853 9.35246 17.5228 9.6763 18.2276C10.4206 19.8476 11.2971 20.5 12 20.5C12.7029 20.5 13.5794 19.8476 14.3237 18.2276C14.6475 17.5228 14.9195 16.6853 15.12 15.75H8.87998ZM16.651 15.75C16.4257 16.9072 16.0978 17.9591 15.6867 18.8539C15.5165 19.2243 15.3254 19.5804 15.1141 19.9115C17.0872 19.1342 18.6995 17.6401 19.6302 15.75H16.651ZM20.199 14.25H16.8781C16.9581 13.5252 17 12.7718 17 12C17 11.2282 16.9581 10.4748 16.8781 9.75H20.199C20.3952 10.4666 20.5 11.2211 20.5 12C20.5 12.7789 20.3952 13.5334 20.199 14.25ZM15.3683 14.25H8.63173C8.54611 13.5349 8.5 12.7809 8.5 12C8.5 11.2191 8.54611 10.4651 8.63173 9.75H15.3683C15.4539 10.4651 15.5 11.2191 15.5 12C15.5 12.7809 15.4539 13.5349 15.3683 14.25ZM16.651 8.25H19.6302C18.6995 6.35989 17.0872 4.8658 15.1141 4.08853C15.3254 4.41956 15.5165 4.77574 15.6867 5.14614C16.0978 6.04086 16.4257 7.0928 16.651 8.25ZM9.6763 5.77239C9.35246 6.47722 9.08053 7.31474 8.87998 8.25H15.12C14.9195 7.31474 14.6475 6.47722 14.3237 5.77239C13.5794 4.15241 12.7029 3.5 12 3.5C11.2971 3.5 10.4206 4.15241 9.6763 5.77239Z"/></svg>',
             'link' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>',
             'home' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
             'search' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>',
@@ -2174,7 +2185,7 @@ class Twine {
             'book' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>',
             'document' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>',
             'download' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>',
-            'share' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>',
+            'share' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="currentColor"><path d="M216,112v96a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V112A16,16,0,0,1,56,96H80a8,8,0,0,1,0,16H56v96H200V112H176a8,8,0,0,1,0-16h24A16,16,0,0,1,216,112ZM93.66,69.66,120,43.31V136a8,8,0,0,0,16,0V43.31l26.34,26.35a8,8,0,0,0,11.32-11.32l-40-40a8,8,0,0,0-11.32,0l-40,40A8,8,0,0,0,93.66,69.66Z"/></svg>',
             'gift' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/></svg>',
             'ticket' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.81-2.77-2-3.46V6h16v2.54z"/></svg>',
             'restaurant' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>',
@@ -2274,15 +2285,23 @@ class Twine {
             <?php endif; ?>
             <div class="twine-links">
                 <?php foreach ($links as $link): ?>
-                    <a href="<?php echo esc_url($link['url']); ?>"
-                       class="twine-link-button<?php echo !empty($link['image']) ? ' has-image' : ''; ?>"
-                       target="_blank"
-                       rel="noopener noreferrer">
-                        <?php if (!empty($link['image'])): ?>
-                            <img src="<?php echo esc_url($link['image']); ?>" alt="" class="twine-link-image">
+                    <?php $show_share = !isset($link['share']) || $link['share']; ?>
+                    <div class="twine-link-wrapper<?php echo $show_share ? ' has-share' : ''; ?>">
+                        <a href="<?php echo esc_url($link['url']); ?>"
+                           class="twine-link-button<?php echo !empty($link['image']) ? ' has-image' : ''; ?>"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <?php if (!empty($link['image'])): ?>
+                                <img src="<?php echo esc_url($link['image']); ?>" alt="" class="twine-link-image">
+                            <?php endif; ?>
+                            <span class="twine-link-text"><?php echo esc_html($link['text']); ?></span>
+                        </a>
+                        <?php if ($show_share): ?>
+                            <button class="twine-share-btn" data-url="<?php echo esc_url($link['url']); ?>" data-title="<?php echo esc_attr($link['text']); ?>" aria-label="Share this link">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="2.5" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13.5" r="1.5"/></svg>
+                            </button>
                         <?php endif; ?>
-                        <span class="twine-link-text"><?php echo esc_html($link['text']); ?></span>
-                    </a>
+                    </div>
                 <?php endforeach; ?>
             </div>
 
@@ -2652,8 +2671,8 @@ class Twine {
             </script>
             <?php endif; ?>
             <style>
-                html { margin: 0; padding: 0; }
-                body { margin: 0; padding: 0; overflow-x: hidden; }
+                html { margin: 0; padding: 0; overscroll-behavior: none; }
+                body { margin: 0; padding: 0; overflow-x: hidden; overscroll-behavior: none; }
             </style>
         </head>
         <body>
@@ -2679,12 +2698,20 @@ class Twine {
                 <div class="twine-links">
                     <?php if ($mode === 'live' && !empty($links)): ?>
                         <?php foreach ($links as $link): ?>
-                            <a href="<?php echo esc_url($link['url']); ?>" class="twine-link-button<?php echo !empty($link['image']) ? ' has-image' : ''; ?>" target="_blank">
-                                <?php if (!empty($link['image'])): ?>
-                                    <img src="<?php echo esc_url($link['image']); ?>" alt="" class="twine-link-image">
+                            <?php $show_share = !isset($link['share']) || $link['share']; ?>
+                            <div class="twine-link-wrapper<?php echo $show_share ? ' has-share' : ''; ?>">
+                                <a href="<?php echo esc_url($link['url']); ?>" class="twine-link-button<?php echo !empty($link['image']) ? ' has-image' : ''; ?>" target="_blank">
+                                    <?php if (!empty($link['image'])): ?>
+                                        <img src="<?php echo esc_url($link['image']); ?>" alt="" class="twine-link-image">
+                                    <?php endif; ?>
+                                    <span class="twine-link-text"><?php echo esc_html($link['text']); ?></span>
+                                </a>
+                                <?php if ($show_share): ?>
+                                    <button class="twine-share-btn" data-url="<?php echo esc_url($link['url']); ?>" data-title="<?php echo esc_attr($link['text']); ?>" aria-label="Share this link">
+                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="2.5" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13.5" r="1.5"/></svg>
+                                    </button>
                                 <?php endif; ?>
-                                <span class="twine-link-text"><?php echo esc_html($link['text']); ?></span>
-                            </a>
+                            </div>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <a href="#" class="twine-link-button" onclick="return false;">Sample Link 1</a>
@@ -2846,6 +2873,43 @@ class Twine {
                 })();
             </script>
             <?php endif; ?>
+            <script>
+                (function() {
+                    document.querySelectorAll('.twine-share-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var url = this.getAttribute('data-url');
+                            var title = this.getAttribute('data-title');
+                            if (navigator.share) {
+                                navigator.share({ title: title, url: url }).catch(function() {});
+                            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(url).then(function() {
+                                    showLinkToast();
+                                }).catch(function() {
+                                    prompt('Copy this link:', url);
+                                });
+                            } else {
+                                prompt('Copy this link:', url);
+                            }
+                        });
+                    });
+
+                    function showLinkToast() {
+                        var existing = document.querySelector('.twine-share-toast');
+                        if (existing) existing.remove();
+                        var toast = document.createElement('div');
+                        toast.className = 'twine-share-toast';
+                        toast.textContent = 'Link copied!';
+                        document.body.appendChild(toast);
+                        setTimeout(function() { toast.classList.add('twine-share-toast-visible'); }, 10);
+                        setTimeout(function() {
+                            toast.classList.remove('twine-share-toast-visible');
+                            setTimeout(function() { toast.remove(); }, 300);
+                        }, 2000);
+                    }
+                })();
+            </script>
         </body>
         </html>
         <?php

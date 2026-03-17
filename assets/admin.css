@@ -231,6 +231,38 @@
     height: 20px;
 }
 
+.twine-link-share-toggle {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.twine-link-share-toggle .twine-toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: #c3c4c7;
+    transition: color 0.2s ease;
+}
+
+.twine-link-share-toggle .twine-toggle-label:hover {
+    color: #2271b1;
+}
+
+.twine-link-share-toggle .twine-link-share-checkbox {
+    display: none;
+}
+
+.twine-link-share-toggle .twine-link-share-checkbox:checked + .dashicons {
+    color: #2271b1;
+}
+
+.twine-link-share-toggle .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
 .twine-link-image-remove {
     position: absolute;
     top: -6px;

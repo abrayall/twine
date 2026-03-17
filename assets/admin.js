@@ -185,6 +185,15 @@ jQuery(document).ready(function($) {
                                class="twine-link-url"
                                required>
                     </div>
+                    <div class="twine-link-share-toggle">
+                        <label class="twine-toggle-label" title="Show share button">
+                            <input type="checkbox"
+                                   class="twine-link-share-checkbox"
+                                   checked>
+                            <span class="dashicons dashicons-share"></span>
+                        </label>
+                        <input type="hidden" name="link_share[]" value="1" class="twine-link-share-value">
+                    </div>
                 </div>
                 <button type="button" class="button twine-remove-link">
                     <span class="dashicons dashicons-trash"></span>
@@ -196,6 +205,11 @@ jQuery(document).ready(function($) {
 
         // Focus on the new text input
         $('#twine-links-container .twine-link-item:last-child .twine-link-text').focus();
+    });
+
+    // Share toggle
+    $(document).on('change', '.twine-link-share-checkbox', function() {
+        $(this).closest('.twine-link-share-toggle').find('.twine-link-share-value').val(this.checked ? '1' : '0');
     });
 
     // Remove link
